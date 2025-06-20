@@ -36,9 +36,17 @@ pipeline {
          * 📥 Étape de récupération du code source depuis le dépôt Git.
          * Jenkins utilise automatiquement l'URL du dépôt configurée dans le job.
          */
-        stage('📥 Checkout') {
+
+        stage('📥 Checkout privé GitHub') {
             steps {
-                checkout scm
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git',
+                        credentialsId: 'github-agent'
+                    ]]
+                ])
             }
         }
 
@@ -75,5 +83,13 @@ pipeline {
             }
         }
 
+    }
+    post {
+        failure {
+            echo "❌ Échec du pipeline."
+        }
+        always {
+            cleanWs()
+        }
     }
 }
