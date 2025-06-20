@@ -1,63 +1,56 @@
 /**
- * 🛠️ Pipeline Jenkins complet pour un projet Java Spring Boot.
- * Ce pipeline est exécuté sur un agent nommé 'jenkins-agent' et utilise Maven et JDK.
+ * 🔧 Jenkinsfile complet pour un projet Java Spring Boot.
+ * Ce pipeline CI/CD compile, teste, analyse la qualité du code via SonarQube,
+ * puis construit une image Docker.
  *
- * Objectifs :
- * - Compiler l'application
- * - Lancer les tests
- * - Vérifier le style de code
- * - Analyser la qualité avec SonarQube
- * - Scanner les dépendances avec Snyk
+ * Configuration sans interface Jenkins : tout est automatique via docker-compose.
  */
 pipeline {
 
-    /** 
-     * 🎯 Spécifie sur quel agent Jenkins ce pipeline doit s'exécuter.
-     * 'jenkins-agent' est un nom logique, défini dans la configuration Jenkins.
+    /**
+     * 🏗️ Agent d’exécution utilisé.
+     * Il doit correspondre à un agent Jenkins Docker nommé "jenkins-agent".
      */
     agent { label 'jenkins-agent' }
 
     /**
-     * 🔧 Outils nécessaires pour les étapes suivantes du pipeline.
-     * Ils doivent être installés et configurés dans Jenkins (Manage Jenkins > Global Tool Configuration).
+     * 🧰 Déclare les outils requis.
+     * Ceux-ci doivent être installés via "Manage Jenkins > Global Tool Configuration".
      */
     tools {
-        jdk 'jdk'         // Java Development Kit (version 17)
-        maven 'maven'     // Apache Maven (version 3.9)
+        jdk 'jdk'         // JDK 17
+        maven 'maven'     // Maven 3.9
     }
 
     /**
-     * 📦 Début des étapes du pipeline (appelées "stages").
-     * Chaque stage exécute une tâche spécifique dans le cycle de vie CI/CD.
+     * 🌍 Variables d’environnement du pipeline.
+     * - SONAR_TOKEN : transmis par le conteneur Jenkins via docker-compose.
+     * - SONAR_HOST_URL : même chose, évite toute configuration via l'IHM Jenkins.
+     * - DOCKER_IMAGE : nom final de l’image Docker générée.
+     */
+    environment {
+        SONAR_TOKEN     = "${env.SONAR_TOKEN}"      // Injecté via docker-compose.yml
+        SONAR_HOST_URL  = "${env.SONAR_HOST_URL}"   // Injecté via docker-compose.yml
+        DOCKER_IMAGE    = "sim/tasks-app:latest"    // Nom de l’image Docker
+    }
+
+    /**
+     * 📦 Étapes principales du pipeline.
      */
     stages {
 
-        /**
-         * 📥 Étape de récupération du code source depuis le dépôt Git.
-         * Jenkins utilise automatiquement l'URL du dépôt configurée dans le job.
-         */
-
-        stage('📥 Checkout privé GitHub') {
+        stage('📥 Checkout Git') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git',
-                        credentialsId: 'github-agent'
-                    ]]
-                ])
+                // 🔄 Récupère le code source depuis GitHub
+                git url: 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git', branch: 'main'
             }
         }
 
-                /**
-         * 🛠️ Étape pour générer un Maven Wrapper si jamais il est absent.
-         * Le Maven Wrapper permet d’utiliser la bonne version de Maven même si elle n’est pas installée localement.
-         */
         stage('🛠️ Générer Maven Wrapper si absent') {
             steps {
+                // 🔧 Permet d’assurer la cohérence de version Maven
                 sh '''
-                    if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
+                    if [ ! -f "./mvnw" ]; then
                         echo "➡ Maven Wrapper manquant. Génération..."
                         mvn -N io.takari:maven:wrapper
                     else
@@ -67,48 +60,72 @@ pipeline {
             }
         }
 
-        /**
-         * 🔧 Étape de compilation du code source Java avec Maven.
-         * Les tests sont ignorés ici pour se concentrer sur la construction (build).
-         */
         stage('🔧 Build') {
             steps {
-                sh 'mvn clean install -DskipTests'
+                // ⚙️ Compile le projet sans exécuter les tests
+                sh './mvnw clean install -DskipTests'
             }
-            post {
-                success {
-                    echo "✅ Build réussi - Archivage des artefacts..."
-                    archiveArtifacts artifacts: 'target/*.jar' // 📦 Sauvegarde du fichier .jar généré
+        }
+
+        stage('🧪 Tests') {
+            steps {
+                // ✅ Lance les tests unitaires
+                sh './mvnw test'
+                // 📄 Publie les rapports JUnit dans l’interface Jenkins
+                junit 'target/surefire-reports/*.xml'
+            }
+        }
+
+        stage('📊 Analyse SonarQube') {
+            steps {
+                // 🔍 Analyse du code source avec SonarQube (sans withSonarQubeEnv)
+                sh """
+                    ./mvnw sonar:sonar \
+                        -Dsonar.projectKey=tasks \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.login=${SONAR_TOKEN}
+                """
+            }
+        }
+
+        stage('🐳 Build Docker Image') {
+            steps {
+                // 🐳 Construit l’image Docker locale à partir du Dockerfile
+                script {
+                    docker.build(env.DOCKER_IMAGE)
                 }
             }
         }
 
-        /**
-         * 🧪 Étape d’exécution des tests unitaires avec Maven.
-         * Les résultats seront utilisés plus tard pour SonarQube.
-         */
-        stage('🧪 Tests') {
+        /*
+        // (Optionnel) stage : 📤 Pousser l’image sur Docker Hub
+        stage('📤 Push Docker Image') {
+            environment {
+                REGISTRY_CREDENTIALS = credentials('docker-registry-token')
+            }
             steps {
-                sh 'mvn test'
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', 'REGISTRY_CREDENTIALS') {
+                        docker.image(env.DOCKER_IMAGE).push()
+                    }
+                }
             }
         }
-
-        /**
-         * 🧹 Étape pour vérifier la qualité du code avec Checkstyle.
-         * Cela détecte des erreurs de style comme des noms de classes incorrects ou des indentations non conformes.
-         */
-        stage('🧹 Checkstyle Analysis') {
-            steps {
-                sh 'mvn checkstyle:checkstyle'
-            }
-        }
-
+        */
     }
+
+    /**
+     * ✅ Hooks post-exécution : succès, échec, toujours
+     */
     post {
+        success {
+            echo "✅ Pipeline terminé avec succès !"
+        }
         failure {
             echo "❌ Échec du pipeline."
         }
         always {
+            // 🧼 Nettoie l’espace de travail Jenkins pour le job suivant
             cleanWs()
         }
     }
