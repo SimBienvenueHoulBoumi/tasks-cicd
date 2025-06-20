@@ -4,8 +4,8 @@ import services.UpdateTask;
 
 import dto.TasksDto;
 import exceptions.ResourceNotFoundException;
-import jpa.TasksRepository;
-import models.Tasks;
+import main.java.simple.tasks.jpa.*;
+import simple.tasks.models.Tasks;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;

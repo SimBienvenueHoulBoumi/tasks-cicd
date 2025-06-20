@@ -1,8 +1,8 @@
 package simple.tasks.services;
 
 import services.TasksGetAllTasks;
-import jpa.TasksRepository;
-import models.Tasks;
+import main.java.simple.tasks.jpa.*;
+import simple.tasks.models.Tasks;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;

@@ -5,8 +5,8 @@ import java.util.Optional;
 import services.TasksGetTaskById;
 
 import exceptions.ResourceNotFoundException;
-import jpa.TasksRepository;
-import models.Tasks;
+import main.java.simple.tasks.jpa.*;
+import simple.tasks.models.Tasks;
 import services.TasksGetTaskById;
 
 public class TasksGetTaskByIdTest {
