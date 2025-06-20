@@ -1,6 +1,6 @@
 package simple.tasks.services;
 
-import main.java.simple.tasks.exceptions.*;
+import main.java.simple.tasks.*;
 
 import main.java.simple.tasks.jpa.*;
 import simple.tasks.models.Tasks;
