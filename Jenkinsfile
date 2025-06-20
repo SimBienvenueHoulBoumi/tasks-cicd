@@ -13,7 +13,6 @@ pipeline {
     }
 
     environment {
-        SONAR_TOKEN     = "${env.SONAR_TOKEN}"        // Injecté via docker-compose
         SONAR_HOST_URL  = "${env.SONAR_HOST_URL}"     // Injecté via docker-compose
         DOCKER_IMAGE    = "tasks-app:latest"          // 📦 Nom de l’image locale
     }
@@ -63,12 +62,14 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                sh """
-                    ./mvnw sonar:sonar \
-                        -Dsonar.projectKey=tasks \
-                        -Dsonar.host.url=${SONAR_HOST_URL} \
-                        -Dsonar.login=${SONAR_TOKEN}
-                """
+                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                    sh """
+                        ./mvnw sonar:sonar \
+                            -Dsonar.projectKey=tasks \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.login=${SONAR_TOKEN}
+                    """
+                }
             }
         }
 
