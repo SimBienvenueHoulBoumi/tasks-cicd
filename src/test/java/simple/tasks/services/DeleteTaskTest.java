@@ -1,13 +1,10 @@
 package simple.tasks.services;
 
-import main.java.simple.tasks.*;
-
 import simple.tasks.jpa.TasksRepository;
 import simple.tasks.models.Tasks;
+import simple.tasks.exceptions.ResourceNotFoundException;
+
 import org.junit.jupiter.api.Test;
-
-
-import simple.tasks.services.DeleteTask;
 
 import java.util.Optional;
 
@@ -21,17 +18,23 @@ class DeleteTaskTest {
 
     @Test
     void shouldDeleteTaskIfExists() {
+        // Arrange
         Tasks task = new Tasks("To Delete");
         when(tasksRepository.findById(1L)).thenReturn(Optional.of(task));
 
+        // Act
         service.deleteTask(1L);
+
+        // Assert
         verify(tasksRepository).delete(task);
     }
 
     @Test
     void shouldThrowIfTaskNotFound() {
+        // Arrange
         when(tasksRepository.findById(2L)).thenReturn(Optional.empty());
 
+        // Act & Assert
         assertThrows(ResourceNotFoundException.class, () -> service.deleteTask(2L));
     }
 }

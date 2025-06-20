@@ -83,6 +83,16 @@ pipeline {
             }
         }
 
+        /**
+         * 🧪 Étape d’exécution des tests unitaires avec Maven.
+         * Les résultats seront utilisés plus tard pour SonarQube.
+         */
+        stage('🧪 Tests') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
     }
     post {
         failure {

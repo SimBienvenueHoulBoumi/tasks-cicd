@@ -1,16 +1,19 @@
 package simple.tasks.services;
 
-import java.util.Optional;
-
-import services.TasksGetTaskById;
-
-import exceptions.ResourceNotFoundException;
+import simple.tasks.exceptions.ResourceNotFoundException;
 import simple.tasks.jpa.TasksRepository;
 import simple.tasks.models.Tasks;
-import services.TasksGetTaskById;
 
-public class TasksGetTaskByIdTest {
-     private final TasksRepository tasksRepository = mock(TasksRepository.class);
+import org.junit.jupiter.api.Test;
+
+import java.util.Optional;
+
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+class TasksGetTaskByIdTest {
+
+    private final TasksRepository tasksRepository = mock(TasksRepository.class);
     private final TasksGetTaskById service = new TasksGetTaskById(tasksRepository);
 
     @Test

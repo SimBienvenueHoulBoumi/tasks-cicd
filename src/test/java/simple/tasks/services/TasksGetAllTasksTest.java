@@ -1,8 +1,8 @@
 package simple.tasks.services;
 
-import services.TasksGetAllTasks;
 import simple.tasks.jpa.TasksRepository;
 import simple.tasks.models.Tasks;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -18,14 +18,17 @@ class TasksGetAllTasksTest {
 
     @Test
     void shouldReturnAllTasks() {
+        // Arrange
         List<Tasks> mockTasks = Arrays.asList(
             new Tasks("Task 1"),
             new Tasks("Task 2")
         );
-
         when(tasksRepository.findAll()).thenReturn(mockTasks);
 
+        // Act
         List<Tasks> result = service.getAllTasks();
+
+        // Assert
         assertEquals(2, result.size());
         assertEquals("Task 1", result.get(0).getName());
         assertEquals("Task 2", result.get(1).getName());

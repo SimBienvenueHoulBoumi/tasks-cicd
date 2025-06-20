@@ -1,11 +1,10 @@
 package simple.tasks.services;
 
-import services.UpdateTask;
-
-import dto.TasksDto;
-import exceptions.ResourceNotFoundException;
+import simple.tasks.dto.TasksDto;
+import simple.tasks.exceptions.ResourceNotFoundException;
 import simple.tasks.jpa.TasksRepository;
 import simple.tasks.models.Tasks;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -39,4 +38,3 @@ class UpdateTaskTest {
         assertThrows(ResourceNotFoundException.class, () -> service.updateTask(5L, dto));
     }
 }
-
