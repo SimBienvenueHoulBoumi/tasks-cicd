@@ -1,6 +1,7 @@
 package simple.tasks.services;
 
-import exceptions.ResourceNotFoundException;
+import main.java.simple.tasks.exceptions.*;
+
 import jpa.TasksRepository;
 import models.Tasks;
 import org.junit.jupiter.api.Test;
