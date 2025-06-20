@@ -2,7 +2,7 @@ package simple.tasks.services;
 
 import services.TasksCreateTask;
 import dto.TasksDto;
-import main.java.simple.tasks.jpa.TasksRepository;
+import simple.tasks.jpa.TasksRepository;
 import simple.tasks.models.Tasks;
 import org.junit.jupiter.api.Test;
 

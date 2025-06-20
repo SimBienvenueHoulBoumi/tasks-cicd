@@ -5,7 +5,7 @@ import java.util.Optional;
 import services.TasksGetTaskById;
 
 import exceptions.ResourceNotFoundException;
-import main.java.simple.tasks.jpa.TasksRepository;
+import simple.tasks.jpa.TasksRepository;
 import simple.tasks.models.Tasks;
 import services.TasksGetTaskById;
 
