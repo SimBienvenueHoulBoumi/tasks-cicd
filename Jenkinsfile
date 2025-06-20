@@ -93,6 +93,16 @@ pipeline {
             }
         }
 
+        /**
+         * 🧹 Étape pour vérifier la qualité du code avec Checkstyle.
+         * Cela détecte des erreurs de style comme des noms de classes incorrects ou des indentations non conformes.
+         */
+        stage('🧹 Checkstyle Analysis') {
+            steps {
+                sh 'mvn checkstyle:checkstyle'
+            }
+        }
+
     }
     post {
         failure {
