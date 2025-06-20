@@ -2,7 +2,7 @@ package simple.tasks.services;
 
 import main.java.simple.tasks.*;
 
-import main.java.simple.tasks.jpa.*;
+import main.java.simple.tasks.jpa.TasksRepository;
 import simple.tasks.models.Tasks;
 import org.junit.jupiter.api.Test;
 
