@@ -1,6 +1,5 @@
 package simple.tasks.controllers;
 
-import lombok.AllArgsConstructor;
 
 import simple.tasks.dto.TasksDto;
 import simple.tasks.models.Tasks;
