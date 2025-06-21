@@ -2,6 +2,7 @@
  * 🔧 Jenkinsfile – Pipeline CI/CD Spring Boot
  * 📦 Maven build | 🧪 Tests | 📊 SonarQube | 🐳 Docker | 🔐 Sécurité (Trivy, OWASP)
  */
+
 pipeline {
 
     agent { label 'jenkins-agent' }
@@ -9,8 +10,6 @@ pipeline {
     tools {
         jdk 'jdk'
         maven 'maven'
-        dockerTool 'docker'
-        git 'git'
     }
 
     environment {
@@ -28,7 +27,7 @@ pipeline {
         DOCKER_HUB_NAMESPACE = 'docker.io/brhulla'
 
         // 🔒 Credentials
-        AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS'
+        GITHUB-CREDENTIALS = 'GITHUB-CREDENTIALS'
 
         // 🧬 Trivy & Sécurité
         TRIVY_REPORT_DIR = 'trivy-reports'
@@ -44,7 +43,7 @@ pipeline {
         timestamps()
     }
 
-    stages {
+    stages('🚀 Initialisation') {
 
         stage('📥 Checkout Git') {
             steps {
@@ -53,7 +52,7 @@ pipeline {
                     branches: [[name: "${GIT_BRANCH}"]],
                     userRemoteConfigs: [[
                         url: "${GIT_REPO_URL}",
-                        credentialsId: "${AGENT_CREDENTIALS}"
+                        credentialsId: "${GITHUB-CREDENTIALS}"
                     ]]
                 ])
             }
@@ -62,7 +61,7 @@ pipeline {
         stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
-                    if [ ! -f "./mvnw" ]; then
+                    if [ ! -f "mvn" ]; then
                         echo "➡ Génération du Maven Wrapper..."
                         mvn -N io.takari:maven:wrapper
                     fi
@@ -72,7 +71,7 @@ pipeline {
 
         stage('🔨 Build & Tests') {
             steps {
-                sh './mvnw clean verify'
+                sh 'mvn clean verify'
             }
             post {
                 always {
@@ -83,112 +82,100 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                withSonarQubeEnv('sonnarScanner') {
+                    withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR-TOKEN')]) {
                         sh '''
-                            ./mvnw sonar:sonar \
-                                -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                                -Dsonar.host.url=$SONAR_HOST_URL \
-                                -Dsonar.token=$SONAR_TOKEN
+                            mvn sonar:sonar \
+                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                            -Dsonar.host.url=$SONAR_HOST_URL \
+                            -Dsonar.token=$SONAR-TOKEN
                         '''
                     }
                 }
             }
-            post {
-                failure {
-                    echo '❌ Échec de l’analyse de SonarQube. Vérifiez le token, l’URL du serveur, et les permissions du projet.'
-                }
-                always {
-                    archiveArtifacts artifacts: '**/report-task.txt', allowEmptyArchive: true
-                }
-            }
         }
 
-        stage('🔐 Analyse sécurité OWASP') {
-            steps {
-                sh '''
-                    ./mvnw org.owasp:dependency-check-maven:check \
-                        -Dformat=XML \
-                        -DoutputDirectory=$OWASP_REPORT_DIR
-                '''
+        post {
+            failure {
+                echo '❌ Échec de l’analyse de SonarQube. Vérifiez le token, l’URL du serveur, et les permissions du projet.'
             }
-            post {
-                always {
-                    archiveArtifacts artifacts: "$OWASP_REPORT_DIR/dependency-check-report.xml", allowEmptyArchive: true
-                }
+            always {
+                archiveArtifacts artifacts: '**/report-task.txt', allowEmptyArchive: true
             }
         }
+    }
 
-        stage('🐳 Build Docker') {
-            steps {
-                sh 'docker build -t $IMAGE_TAG .'
+    stage('🔐 Analyse sécurité OWASP') {
+        steps {
+            sh '''
+                mvn org.owasp:dependency-check-maven:check \
+                    -Dformat=XML \
+                    -DoutputDirectory=$OWASP_REPORT_DIR
+            '''
+        }
+        post {
+            always {
+                archiveArtifacts artifacts: "$OWASP_REPORT_DIR/dependency-check-report.xml", allowEmptyArchive: true
             }
         }
+    }
 
-        stage('🛡️ Trivy – Analyse image') {
-            steps {
-                sh '''
-                    mkdir -p $TRIVY_REPORT_DIR
-                    docker run --rm \
-                        -v /var/run/docker.sock:/var/run/docker.sock \
-                        -v $PWD/$TRIVY_REPORT_DIR:/root/reports \
-                        aquasec/trivy:latest image \
-                        --exit-code 0 \
-                        --severity CRITICAL,HIGH \
-                        --format json \
-                        --output /root/reports/trivy-image-report.json \
-                        $IMAGE_TAG
-                '''
+    stage('🐳 Build Docker') {
+        steps {
+            sh 'docker build -t $IMAGE_TAG .'
+        }
+    }
+
+    stage('🛡️ Trivy – Analyse image') {
+        steps {
+            sh '''
+                mkdir -p $TRIVY_REPORT_DIR
+                docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    -v $PWD/$TRIVY_REPORT_DIR:/root/reports \
+                    aquasec/trivy:latest image \
+                    --exit-code 0 \
+                    --severity CRITICAL,HIGH \
+                    --format json \
+                    --output /root/reports/trivy-image-report.json \
+                    $IMAGE_TAG
+            '''
+        }
+        post {
+            always {
+                archiveArtifacts artifacts: "$TRIVY_REPORT_DIR/trivy-image-report.json", allowEmptyArchive: true
             }
-            post {
-                always {
-                    archiveArtifacts artifacts: "$TRIVY_REPORT_DIR/trivy-image-report.json", allowEmptyArchive: true
-                }
-                failure {
-                    echo '🚨 Vulnérabilités critiques détectées dans l’image Docker.'
-                }
+            failure {
+                echo '🚨 Vulnérabilités critiques détectées dans l’image Docker.'
             }
         }
+    }
 
-        stage('🧬 Trivy – Analyse code source') {
-            steps {
-                sh '''
-                    docker run --rm \
-                        -v $PWD:/project \
-                        -v $PWD/$TRIVY_REPORT_DIR:/root/reports \
-                        aquasec/trivy:latest fs /project \
-                        --exit-code 0 \
-                        --format json \
-                        --output /root/reports/trivy-fs-report.json
-                '''
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: "$TRIVY_REPORT_DIR/trivy-fs-report.json", allowEmptyArchive: true
-                }
+    stage('🧬 Trivy – Analyse code source') {
+        steps {
+            sh '''
+                docker run --rm \
+                    -v $PWD:/project \
+                    -v $PWD/$TRIVY_REPORT_DIR:/root/reports \
+                    aquasec/trivy:latest fs /project \
+                    --exit-code 0 \
+                    --format json \
+                    --output /root/reports/trivy-fs-report.json
+            '''
+        }
+        post {
+            always {
+                archiveArtifacts artifacts: "$TRIVY_REPORT_DIR/trivy-fs-report.json", allowEmptyArchive: true
             }
         }
+    }
 
-        stage('🚀 Push Docker vers DockerHub') {
-            steps {
-                withCredentials([string(credentialsId: 'DOCKER-HUB-TOKEN', variable: 'DOCKER_TOKEN')]) {
-                    sh '''
-                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
-                        docker tag $IMAGE_TAG $IMAGE_FULL
-                        docker push $IMAGE_FULL
-                        docker logout
-                    '''
-                }
-            }
-        }
-
-        stage('🧹 Nettoyage') {
-            steps {
-                sh '''
-                    docker rmi $IMAGE_TAG || true
-                    docker system prune -f
-                '''
-            }
+    stage('🧹 Nettoyage') {
+        steps {
+            sh '''
+                docker rmi $IMAGE_TAG || true
+                docker system prune -f
+            '''
         }
     }
 
@@ -204,3 +191,5 @@ pipeline {
         }
     }
 }
+
+
