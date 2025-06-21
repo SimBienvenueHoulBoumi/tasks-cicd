@@ -145,21 +145,22 @@ pipeline {
         }
 
         stage('🚀 Push Docker vers DockerHub') {
-        environment {
-            REGISTRY = 'docker.io/brhulla'
-            IMAGE_FULL = "${REGISTRY}/${IMAGE_TAG}"
-        }
-        steps {
-            withCredentials([string(credentialsId: 'DOCKER_HUB_TOKEN', variable: 'DOCKER_TOKEN')]) {
-                sh '''
-                    echo "$DOCKER_TOKEN" | docker login -u "brhulla@gmail.com" --password-stdin
-                    docker tag ${IMAGE_TAG} ${IMAGE_FULL}
-                    docker push ${IMAGE_FULL}
-                    docker logout
-                '''
+            environment {
+                REGISTRY = 'docker.io/brhulla'
+                IMAGE_FULL = "${REGISTRY}/${IMAGE_TAG}"
+            }
+            steps {
+                withCredentials([string(credentialsId: 'DOCKER-HUB-TOKEN', variable: 'DOCKER_TOKEN')]) {
+                    sh '''
+                        echo "$DOCKER_TOKEN" | docker login -u "brhulla@gmail.com" --password-stdin
+                        docker tag ${IMAGE_TAG} ${IMAGE_FULL}
+                        docker push ${IMAGE_FULL}
+                        docker logout
+                    '''
+                }
             }
         }
-    }
+
 
         stage('🧹 Nettoyage') {
             steps {
