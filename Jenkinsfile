@@ -81,30 +81,33 @@ pipeline {
             }
         }
 
-        stage('🧪 Vérif injection token') {
-            steps {
-                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
-                    sh '''
-                        echo "✅ TOKEN détecté (5 premiers caractères) : ${TOKEN:0:5}********"
-                    '''
-                }
-            }
-        }
-
         stage('📊 Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
                         sh '''#!/bin/bash
+                            echo "Vérification connexion SonarQube :"
+                            curl -v ${SONAR_HOST_URL}/api/server/version || echo "⚠️ Connexion échouée"
+                            echo "Longueur du token : ${#TOKEN}"
                             ./mvnw clean verify sonar:sonar \
-                            -Dsonar.projectKey=tasks \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.token=$TOKEN
+                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                -Dsonar.host.url=${SONAR_HOST_URL} \
+                                -Dsonar.token=${TOKEN} \
+                                -X
                         '''
                     }
                 }
             }
+
+    post {
+        failure {
+            echo '❌ Échec de l’analyse de SonarQube. Vérifiez le token, l’URL du serveur, et les permissions du projet.'
         }
+        always {
+            archiveArtifacts artifacts: '**/report-task.txt', allowEmptyArchive: true
+        }
+    }
+}
 
         stage('🔐 Analyse sécurité OWASP') {
             steps {
