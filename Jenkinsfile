@@ -28,7 +28,9 @@ pipeline {
 **/
         stage('📥 Checkout Git') {
             steps {
-                git url: 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git', branch: 'main'
+                git credentialsId: 'JENKINS-AGENT-CREDENTIALS',
+                    url: 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git',
+                    branch: 'main'
             }
         }
 
