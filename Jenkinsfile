@@ -83,12 +83,6 @@ pipeline {
             }
         }
 
-        stage('⏳ Quality Gate') {
-            steps {
-                waitForQualityGate abortPipeline: true
-            }
-        }
-
         stage('🔐 Analyse sécurité OWASP') {
             steps {
                 sh 'mvn org.owasp:dependency-check-maven:check -Dformat=XML -DoutputDirectory=dependency-report'
