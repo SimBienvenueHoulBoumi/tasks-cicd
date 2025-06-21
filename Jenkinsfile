@@ -97,17 +97,15 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
                         sh '''
-                            ./mvnw clean verify sonar:sonar \
+                            ./mvnw sonar:sonar \
                             -Dsonar.projectKey=tasks \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
+                            -Dsonar.host.url=http://localhost:9000 \
                             -Dsonar.token=$TOKEN
                         '''
                     }
                 }
             }
         }
-
-
 
 
         stage('🔐 Analyse sécurité OWASP') {
