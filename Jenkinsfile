@@ -58,6 +58,18 @@ pipeline {
             }
         }
 
+        stage('📊 Analyse SonarQube') {
+            steps {
+                withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
+                withSonarQubeEnv('sonarserver') {
+                    sh '''
+                    mvn clean verify sonar:sonar -Dsonar.token=$SONAR_TOKEN
+                    '''
+                }
+                }
+            }
+        }
+
         stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
@@ -76,16 +88,6 @@ pipeline {
             post {
                 always {
                     junit 'target/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        stage('📊 SonarQube Analysis') {
-            steps {
-                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-                withSonarQubeEnv('sonarserver') {
-                    sh 'mvn clean verify sonar:sonar -Dsonar.login=$SONAR_TOKEN'
-                }
                 }
             }
         }
