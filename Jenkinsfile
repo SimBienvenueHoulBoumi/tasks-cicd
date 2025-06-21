@@ -57,8 +57,8 @@ pipeline {
                             def scannerHome = tool name: 'sonarscanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
                             sh """
                                 ${scannerHome}/bin/sonar-scanner \
-                                -Dsonar.projectKey=demo-rest-api \
-                                -Dsonar.projectName=demo-rest-api \
+                                -Dsonar.projectKey=tasks \
+                                -Dsonar.projectName=tasks \
                                 -Dsonar.projectVersion=0.0.1 \
                                 -Dsonar.sources=src \
                                 -Dsonar.java.binaries=target/classes \
