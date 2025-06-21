@@ -82,32 +82,31 @@ pipeline {
         }
 
         stage('📊 Analyse SonarQube') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
-                        sh '''#!/bin/bash
-                            echo "Vérification connexion SonarQube :"
-                            curl -v ${SONAR_HOST_URL}/api/server/version || echo "⚠️ Connexion échouée"
-                            echo "Longueur du token : ${#TOKEN}"
-                            ./mvnw clean verify sonar:sonar \
-                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                                -Dsonar.host.url=${SONAR_HOST_URL} \
-                                -Dsonar.token=${TOKEN} \
-                                -X
-                        '''
+            stage('📊 Analyse SonarQube') {
+                steps {
+                    withSonarQubeEnv('SonarQube') {
+                        withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                            sh '''
+                                ./mvnw clean verify sonar:sonar \
+                                -Dsonar.projectKey=tasks \
+                                -Dsonar.host.url=$SONAR_HOST_URL \
+                                -Dsonar.token=$SONAR_TOKEN
+                            '''
+                        }
                     }
                 }
             }
 
-    post {
-        failure {
-            echo '❌ Échec de l’analyse de SonarQube. Vérifiez le token, l’URL du serveur, et les permissions du projet.'
+
+            post {
+                failure {
+                    echo '❌ Échec de l’analyse de SonarQube. Vérifiez le token, l’URL du serveur, et les permissions du projet.'
+                }
+                always {
+                    archiveArtifacts artifacts: '**/report-task.txt', allowEmptyArchive: true
+                }
+            }
         }
-        always {
-            archiveArtifacts artifacts: '**/report-task.txt', allowEmptyArchive: true
-        }
-    }
-}
 
         stage('🔐 Analyse sécurité OWASP') {
             steps {
