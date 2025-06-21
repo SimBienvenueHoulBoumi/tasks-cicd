@@ -95,28 +95,28 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
-                        sh '''
-                            ./mvnw sonar:sonar \
-                                -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                                -Dsonar.host.url=$SONAR_HOST_URL \
-                                -Dsonar.token=$TOKEN \
-                                -Dsonar.java.binaries=target/classes \
-                                -Dsonar.sources=src/main/java \
-                                -Dsonar.tests=src/test/java \
-                                -Dsonar.java.test.binaries=target/test-classes \
-                                -Dsonar.java.coveragePlugin=jacoco \
-                                -Dsonar.jacoco.reportPaths=target/jacoco.exec \
-                                -Dsonar.language=java \
-                                -Dsonar.projectVersion=$BUILD_NUMBER \
-                                -Dsonar.sourceEncoding=UTF-8 \
-                                -Dsonar.exclusions=src/main/resources/**,src/test/resources/**,**/application.properties,**/application.yml \
-                                -Dsonar.java.source=17 \
-                                -Dsonar.java.target=17 \
-                                -Dsonar.scm.provider=git \
-                                -Dsonar.scm.disabled=false
+                        sh '''#!/bin/bash
+                        ./mvnw clean verify sonar:sonar \
+                            -Dsonar.projectKey=tasks \
+                            -Dsonar.host.url=http://localhost:9000 \
+                            -Dsonar.token=$TOKEN \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.sources=src/main/java \
+                            -Dsonar.tests=src/test/java \
+                            -Dsonar.java.test.binaries=target/test-classes \
+                            -Dsonar.java.coveragePlugin=jacoco \
+                            -Dsonar.jacoco.reportPaths=target/jacoco.exec \
+                            -Dsonar.language=java \
+                            -Dsonar.projectVersion=5 \
+                            -Dsonar.sourceEncoding=UTF-8 \
+                            -Dsonar.exclusions=src/main/resources/**,src/test/resources/**,**/application.properties,**/application.yml \
+                            -Dsonar.java.source=17 \
+                            -Dsonar.java.target=17 \
+                            -Dsonar.scm.provider=git \
+                            -Dsonar.scm.disabled=false
                         '''
                     }
-                }
+                 }
             }
         }
 
