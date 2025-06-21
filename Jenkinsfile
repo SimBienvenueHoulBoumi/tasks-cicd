@@ -72,7 +72,7 @@ pipeline {
                                 -Dsonar.java.binaries=target/classes \
                                 -Dsonar.token=$SONAR_TOKEN \
                                 -Dsonar.host.url=$SONAR_HOST_URL
-                                
+
                                 """
 
                         }
@@ -95,7 +95,7 @@ pipeline {
 
         stage('🔨 Build & Tests') {
             steps {
-                sh './mvnw clean verify' // ✅ Utilise le wrapper généré pour cohérence des builds
+                sh 'mvn clean verify' // ✅ Utilise le wrapper généré pour cohérence des builds
             }
             post {
                 always {
@@ -107,7 +107,7 @@ pipeline {
         stage('🔐 Analyse sécurité OWASP') {
             steps {
                 sh """
-                    ./mvnw org.owasp:dependency-check-maven:check \
+                    mvn org.owasp:dependency-check-maven:check \
                         -Dformat=XML \
                         -DoutputDirectory=${OWASP_REPORT_DIR}
                 """
