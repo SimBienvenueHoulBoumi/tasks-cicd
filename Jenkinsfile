@@ -103,14 +103,14 @@ pipeline {
         stage('📊 Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
-                        sh '''
-                            ./mvnw clean verify sonar:sonar \
-                            -Dsonar.projectKey=tasks \
-                            -Dsonar.host.url=http://localhost:9000 \
-                            -Dsonar.token=$TOKEN
-                        '''
-                    }
+                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
+                    sh """
+                    ./mvnw clean verify sonar:sonar \
+                        -Dsonar.projectKey=tasks \
+                        -Dsonar.host.url=${env.SONAR_HOST_URL} \
+                        -Dsonar.token=$TOKEN
+                    """
+                }
                 }
             }
         }
