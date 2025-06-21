@@ -10,6 +10,7 @@ pipeline {
         jdk 'jdk'
         maven 'maven'
         dockerTool 'docker'
+        git 'git'
     }
 
     environment {
