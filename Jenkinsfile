@@ -108,6 +108,7 @@ pipeline {
         }
 
 
+
         stage('🔐 Analyse sécurité OWASP') {
             steps {
                 sh "mvn org.owasp:dependency-check-maven:check -Dformat=XML -DoutputDirectory=${OWASP_REPORT_DIR}"
