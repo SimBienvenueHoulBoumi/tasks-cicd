@@ -15,7 +15,7 @@ pipeline {
     environment {
         APP_NAME = 'tasks-cicd'
         IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
-        SONAR_HOST_URL = 'http://sonarqube:9000'
+        SONAR_HOST_URL = 'http://localhost:9000'
         SONAR_TOKEN = credentials('SONAR_TOKEN')
         AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS'
         DOCKER_USER = 'brhulla@gmail.com'
