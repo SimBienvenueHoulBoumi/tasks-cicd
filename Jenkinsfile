@@ -22,6 +22,7 @@ pipeline {
 
         // 📊 SonarQube
         SONAR_HOST_URL = 'http://localhost:9000'
+        SONAR_TOKEN = 'sqa_b0ae1324f5f5c8b03253bda64c3e0db91b51795a'
 
         // 🐳 Docker
         DOCKER_HUB_USER = 'brhulla@gmail.com'
@@ -86,10 +87,10 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                         sh '''
-                            ./mvnw clean verify sonar:sonar \
-                            -Dsonar.projectKey=tasks \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.token=$SONAR_TOKEN
+                           ./mvnw clean verify sonar:sonar \
+                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                            -Dsonar.host.url=$SONAR_HOST_URL\
+                            -Dsonar.token=$SONAR_TOKEN \
                         '''
                     }
                 }
