@@ -15,7 +15,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = 'simbienvenuehoulboumi/tasks-cicd:latest' // Nom de l'image Docker
         SONAR_HOST_URL = 'http://localhost:9000/'
-        SONAR_TOKEN    = credentials('SONAR_TOKEN') // Token SonarQube stocké dans Jenkins Credentials
+        SONAR_TOKEN    = credentials('SONAR_TOKEN')// Token SonarQube stocké dans Jenkins Credentials
         AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS' // Credentials pour l'agent Jenkins
     }
 
@@ -68,7 +68,7 @@ pipeline {
                     ./mvnw sonar:sonar \
                         -Dsonar.projectKey=tasks \
                         -Dsonar.host.url=${SONAR_HOST_URL} \
-                        -Dsonar.login=${SONAR_TOKEN}
+                        -Dsonar.token=${SONAR_TOKEN}
                 """
             }
         }
