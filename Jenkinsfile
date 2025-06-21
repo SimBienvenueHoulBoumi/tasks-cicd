@@ -1,7 +1,6 @@
 /**
- * 🔧 Jenkinsfile – CI/CD pour Spring Boot
- * 📦 Build & Tests | 📊 SonarQube | 🔐 Sécu (Trivy/OWASP) | 🐳 Docker
- * 📁 Repo : https://github.com/SimBienvenueHoulBoumi/tasks-cicd
+ * 🔧 Jenkinsfile – Pipeline CI/CD Spring Boot
+ * Étapes : Checkout | Analyse SonarQube | Build & Tests | Sécurité | Docker | Trivy | Nettoyage
  */
 
 pipeline {
@@ -9,35 +8,25 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     tools {
-        jdk 'jdk'         // Déclaré dans Jenkins > Global Tools > JDK
-        maven 'maven'     // Idem pour Maven
-        git 'Default'         // Ajoute un outil Git si "Selected Git installation does not exist"
+        jdk 'jdk'           // 🔧 JDK configuré dans Jenkins
+        maven 'maven'       // 🔧 Maven configuré dans Jenkins
     }
 
     environment {
-        // 🏷️ Infos projet
+        // 🔖 Variables de projet
         APP_NAME = 'tasks-cicd'
+        SONAR_PROJECT_KEY = 'tasks'
         GIT_REPO_URL = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
         GIT_BRANCH = '*/main'
-
-        // 📊 SonarQube
-        SONAR_PROJECT_KEY = 'tasks'
         SONAR_HOST_URL = 'http://localhost:9000'
-        SONARQUBE_INSTANCE = 'sonarserver'        // Doit correspondre au nom configuré dans Jenkins > SonarQube
-
-        // 🔐 Credentials (Jenkins > Credentials > Global)
-        GITHUB_CREDENTIALS = 'GITHUB-CREDENTIALS'
-        SONAR_TOKEN = credentials('SONAR_TOKEN')  // Injecté automatiquement
-
-        // 🐳 Docker
         DOCKER_HUB_USER = 'brhulla@gmail.com'
         DOCKER_HUB_NAMESPACE = 'docker.io/brhulla'
-        IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
-        IMAGE_FULL = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
-
-        // 📄 Sécurité
         TRIVY_REPORT_DIR = 'trivy-reports'
         OWASP_REPORT_DIR = 'dependency-report'
+        IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
+        GITHUB_CREDENTIALS = 'GITHUB-CREDENTIALS'
+        IMAGE_FULL = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
+        SONARQUBE_INSTANCE = 'sonarserver' // 🔧 Nom du serveur SonarQube configuré dans Jenkins
     }
 
     options {
@@ -62,18 +51,20 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withSonarQubeEnv("${SONARQUBE_INSTANCE}") {
-                    sh '''
-                        mvn clean verify sonar:sonar \
-                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.token=$SONAR_TOKEN
-                    '''
+                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                    withSonarQubeEnv("${SONARQUBE_INSTANCE}") {
+                        sh '''
+                            mvn clean verify sonar:sonar \
+                                -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                                -Dsonar.host.url=$SONAR_HOST_URL \
+                                -Dsonar.token=$SONAR_TOKEN
+                        '''
+                    }
                 }
             }
         }
 
-        stage('🔧 Génération Maven Wrapper (si absent)') {
+        stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
                     if [ ! -f "mvnw" ]; then
@@ -95,7 +86,7 @@ pipeline {
             }
         }
 
-        stage('🔐 OWASP Dependency Check') {
+        stage('🔐 Analyse sécurité OWASP') {
             steps {
                 sh '''
                     mvn org.owasp:dependency-check-maven:check \
@@ -110,13 +101,13 @@ pipeline {
             }
         }
 
-        stage('🐳 Build Docker Image') {
+        stage('🐳 Build Docker') {
             steps {
                 sh 'docker build -t $IMAGE_TAG .'
             }
         }
 
-        stage('🛡️ Analyse Docker avec Trivy') {
+        stage('🛡️ Trivy – Analyse image Docker') {
             steps {
                 sh '''
                     mkdir -p $TRIVY_REPORT_DIR
@@ -141,7 +132,7 @@ pipeline {
             }
         }
 
-        stage('🧬 Analyse Code Source avec Trivy') {
+        stage('🧬 Trivy – Analyse code source') {
             steps {
                 sh '''
                     docker run --rm \
@@ -178,7 +169,9 @@ pipeline {
             echo '❌ Échec du pipeline.'
         }
         always {
-            cleanWs()
+            node {
+                cleanWs()
+            }
         }
     }
 }
