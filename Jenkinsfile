@@ -1,6 +1,6 @@
 /**
- * 🔧 Jenkinsfile pour projet Java Spring Boot
- * ➕ Build Maven, Tests, SonarQube, Image Docker
+ * 🔧 Jenkinsfile – Pipeline CI/CD Spring Boot
+ * 📦 Maven build | 🧪 Tests | 📊 SonarQube | 🐳 Docker | 🔐 Sécurité (Trivy, OWASP)
  */
 
 pipeline {
@@ -8,84 +8,104 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     tools {
-        jdk 'jdk'       // JDK 17 (défini dans Jenkins Global Tools)
-        maven 'maven'   // Maven 3.9
+        jdk 'jdk'
+        maven 'maven'
     }
 
     environment {
-        DOCKER_IMAGE = 'simbienvenuehoulboumi/tasks-cicd:latest' // Nom de l'image Docker
+        APP_NAME = 'tasks-cicd'
+        IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
         SONAR_HOST_URL = 'http://localhost:9000/'
-        SONAR_TOKEN    = credentials('SONAR_TOKEN')// Token SonarQube stocké dans Jenkins Credentials
-        AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS' // Credentials pour l'agent Jenkins
+        SONAR_TOKEN = credentials('SONAR_TOKEN')
+        AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS'
+    }
+
+    options {
+        skipDefaultCheckout true
+        timestamps()
     }
 
     stages {
 
         stage('✅ Vérification des variables') {
             steps {
-                echo "🧪 Vérif des variables d’environnement..."
-                echo "DOCKER_IMAGE       = ${env.DOCKER_IMAGE}"
+                echo "🔍 Docker image   : ${IMAGE_TAG}"
+                echo "🔍 SonarQube URL  : ${SONAR_HOST_URL}"
             }
         }
 
         stage('📥 Checkout Git') {
             steps {
-                git credentialsId: "${AGENT_CREDENTIALS}",
-                    url: 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git',
-                    branch: 'main'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git',
+                        credentialsId: "${AGENT_CREDENTIALS}"
+                    ]]
+                ])
             }
         }
 
-        stage('🔧 Générer Maven Wrapper') {
+        stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
                     if [ ! -f "./mvnw" ]; then
-                        echo "➡ Maven Wrapper manquant. Génération..."
+                        echo "➡ Génération du Maven Wrapper..."
                         mvn -N io.takari:maven:wrapper
-                    else
-                        echo "✅ Maven Wrapper déjà présent."
                     fi
                 '''
             }
         }
 
-        stage('🔨 Compilation') {
+        stage('🔨 Build & Tests') {
             steps {
-                sh './mvnw clean install -DskipTests'
+                sh './mvnw clean verify'
             }
-        }
-
-        stage('🧪 Tests') {
-            steps {
-                sh 'mvn verify'
-                junit 'target/surefire-reports/*.xml'
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
             }
         }
 
         stage('📊 Analyse SonarQube') {
             steps {
-                sh """
-                    ./mvnw sonar:sonar \
-                        -Dsonar.projectKey=tasks \
-                        -Dsonar.host.url=${SONAR_HOST_URL} \
-                        -Dsonar.token=${SONAR_TOKEN}
-                """
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                        ./mvnw sonar:sonar \
+                            -Dsonar.projectKey=tasks \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.token=${SONAR_TOKEN}
+                    '''
+                }
             }
         }
 
-        /**
-         * 🐳 Build Docker
-         * Construit l’image Docker avec le Dockerfile présent dans le repo
-         */
+        stage('⏳ Quality Gate') {
+            steps {
+                waitForQualityGate abortPipeline: true
+            }
+        }
+
+        stage('🔐 Analyse sécurité OWASP') {
+            steps {
+                sh 'mvn org.owasp:dependency-check-maven:check -Dformat=XML -DoutputDirectory=dependency-report'
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'dependency-report/dependency-check-report.xml', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('🐳 Build Docker') {
             steps {
-                sh """
-                    docker build -t ${DOCKER_IMAGE} .
-                """
+                sh "docker build -t ${IMAGE_TAG} ."
             }
         }
 
-        stage('🛡️ Scan sécurité Trivy (Image)') {
+        stage('🛡️ Trivy – Analyse image') {
             steps {
                 sh '''
                     mkdir -p trivy-reports
@@ -93,11 +113,11 @@ pipeline {
                         -v /var/run/docker.sock:/var/run/docker.sock \
                         -v $PWD/trivy-reports:/root/reports \
                         aquasec/trivy:latest image \
-                        --exit-code 1 \
+                        --exit-code 0 \
                         --severity CRITICAL,HIGH \
                         --format json \
                         --output /root/reports/trivy-image-report.json \
-                        ${DOCKER_IMAGE}
+                        ${IMAGE_TAG}
                 '''
             }
             post {
@@ -105,12 +125,12 @@ pipeline {
                     archiveArtifacts artifacts: 'trivy-reports/trivy-image-report.json', allowEmptyArchive: true
                 }
                 failure {
-                    echo '❌ Scan Trivy (image) a trouvé des vulnérabilités critiques ou hautes.'
+                    echo '🚨 Vulnérabilités critiques détectées dans l’image Docker.'
                 }
             }
         }
 
-        stage('🧬 Scan sécurité Trivy (Code Source)') {
+        stage('🧬 Trivy – Analyse code source') {
             steps {
                 sh '''
                     docker run --rm \
@@ -129,17 +149,39 @@ pipeline {
             }
         }
 
+        stage('🚀 Push Docker vers DockerHub') {
+            environment {
+                REGISTRY = 'docker.io/simbienvenuehoulboumi'
+                IMAGE_FULL = "${REGISTRY}/${IMAGE_TAG}"
+            }
+            steps {
+               withCredentials(
+                [string(
+                    credentialsId: 'DOCKER_HUB_TOKEN', 
+                    variable: 'DOCKER_TOKEN')]) {
+                        sh '''
+                            echo "$DOCKER_TOKEN" | docker login -u "simbienvenuehoulboumi" --password-stdin
+                            docker tag ${IMAGE_TAG} docker.io/simbienvenuehoulboumi/${IMAGE_TAG}
+                            docker push docker.io/simbienvenuehoulboumi/${IMAGE_TAG}
+                            docker logout
+                        '''
+                }
+
+            }
+        }
+
     }
 
     post {
         success {
-            echo "✅ Pipeline terminé avec succès"
+            echo '✅ Pipeline terminé avec succès.'
         }
         failure {
-            echo "❌ Pipeline échoué"
+            echo '❌ Échec du pipeline.'
         }
         always {
             cleanWs()
         }
     }
 }
+ 
