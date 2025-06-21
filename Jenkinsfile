@@ -11,21 +11,23 @@ pipeline {
         jdk 'jdk'       // JDK 17 (défini dans Jenkins Global Tools)
         maven 'maven'   // Maven 3.9
     }
-/**
+
     environment {
-        DOCKER_IMAGE    = "tasks-app:latest"
+        DOCKER_IMAGE = 'simbienvenuehoulboumi/tasks-cicd:latest' // Nom de l'image Docker
+        SONAR_HOST_URL = 'http://localhost:9000/'
+        SONAR_TOKEN    = credentials('SONAR_TOKEN') // Token SonarQube stocké dans Jenkins Credentials
     }
-**/
+
     stages {
 
-/**
+
         stage('✅ Vérification des variables') {
             steps {
                 echo "🧪 Vérif des variables d’environnement..."
                 echo "DOCKER_IMAGE       = ${env.DOCKER_IMAGE}"
             }
         }
-**/
+
         stage('📥 Checkout Git') {
             steps {
                 git credentialsId: 'JENKINS-AGENT-CREDENTIALS',
@@ -59,7 +61,7 @@ pipeline {
                 junit 'target/surefire-reports/*.xml'
             }
         }
-/**
+
         stage('📊 Analyse SonarQube') {
             steps {
                 sh """
@@ -78,7 +80,7 @@ pipeline {
                 }
             }
         }
-**/
+
     }
 
     post {
