@@ -22,12 +22,10 @@ pipeline {
 
         // 📊 SonarQube
         SONAR_HOST_URL = 'http://localhost:9000'
-        SONAR_TOKEN = credentials('SONAR_TOKEN')
 
         // 🐳 Docker
         DOCKER_HUB_USER = 'brhulla@gmail.com'
         DOCKER_HUB_NAMESPACE = 'docker.io/brhulla'
-        DOCKER_HUB_TOKEN = credentials('DOCKER-HUB-TOKEN')
 
         // 🔒 Credentials
         AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS'
@@ -95,37 +93,37 @@ pipeline {
         stage('🧪 Vérif injection token') {
             steps {
                 withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
-                    sh 'echo "✅ TOKEN détecté : ${TOKEN:0:5}********"'
+                    sh '''
+                        echo "✅ TOKEN détecté (premiers caractères) : ${TOKEN:0:5}********"
+                    '''
                 }
             }
         }
 
         stage('📊 Analyse SonarQube') {
-                steps {
-                    withSonarQubeEnv('SonarQube') {
-                        withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
-                      
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
                         sh '''
-                                mvn clean verify sonar:sonar \
-                                    -Dsonar.projectKey=tasks \
-                                    -Dsonar.host.url=${SONAR_HOST_URL} \
-                                    -Dsonar.token=${TOKEN} \
-                                    -Dsonar.java.binaries=target/classes \
-                                    -Dsonar.sources=src/main/java \
-                                    -Dsonar.tests=src/test/java \
-                                    -Dsonar.java.test.binaries=target/test-classes \
-                                    -Dsonar.java.coveragePlugin=jacoco \
-                                    -Dsonar.jacoco.reportPaths=target/jacoco.exec \
-                                    -Dsonar.language=java \
-                                    -Dsonar.projectVersion=${BUILD_NUMBER} \
-                                    -Dsonar.sourceEncoding=UTF-8 \
-                                    -Dsonar.exclusions=src/main/resources/**,src/test/resources/**,**/application.properties,**/application.yml \
-                                    -Dsonar.java.source=17 \
-                                    -Dsonar.java.target=17 \
-                                    -Dsonar.scm.provider=git \
-                                    -Dsonar.scm.disabled=false \
-                            '''
-                        }
+                            ./mvnw clean verify sonar:sonar \
+                                -Dsonar.projectKey=tasks \
+                                -Dsonar.host.url=$SONAR_HOST_URL \
+                                -Dsonar.token=$TOKEN \
+                                -Dsonar.java.binaries=target/classes \
+                                -Dsonar.sources=src/main/java \
+                                -Dsonar.tests=src/test/java \
+                                -Dsonar.java.test.binaries=target/test-classes \
+                                -Dsonar.java.coveragePlugin=jacoco \
+                                -Dsonar.jacoco.reportPaths=target/jacoco.exec \
+                                -Dsonar.language=java \
+                                -Dsonar.projectVersion=$BUILD_NUMBER \
+                                -Dsonar.sourceEncoding=UTF-8 \
+                                -Dsonar.exclusions=src/main/resources/**,src/test/resources/**,**/application.properties,**/application.yml \
+                                -Dsonar.java.source=17 \
+                                -Dsonar.java.target=17 \
+                                -Dsonar.scm.provider=git \
+                                -Dsonar.scm.disabled=false
+                        '''
                     }
                 }
             }
@@ -133,7 +131,11 @@ pipeline {
 
         stage('🔐 Analyse sécurité OWASP') {
             steps {
-                sh "mvn org.owasp:dependency-check-maven:check -Dformat=XML -DoutputDirectory=${OWASP_REPORT_DIR}"
+                sh '''
+                    ./mvnw org.owasp:dependency-check-maven:check \
+                        -Dformat=XML \
+                        -DoutputDirectory=${OWASP_REPORT_DIR}
+                '''
             }
             post {
                 always {
@@ -144,13 +146,13 @@ pipeline {
 
         stage('🐳 Build Docker') {
             steps {
-                sh "docker build -t ${IMAGE_TAG} ."
+                sh 'docker build -t ${IMAGE_TAG} .'
             }
         }
 
         stage('🛡️ Trivy – Analyse image') {
             steps {
-                sh """
+                sh '''
                     mkdir -p ${TRIVY_REPORT_DIR}
                     docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
@@ -161,7 +163,7 @@ pipeline {
                         --format json \
                         --output /root/reports/trivy-image-report.json \
                         ${IMAGE_TAG}
-                """
+                '''
             }
             post {
                 always {
@@ -175,7 +177,7 @@ pipeline {
 
         stage('🧬 Trivy – Analyse code source') {
             steps {
-                sh """
+                sh '''
                     docker run --rm \
                         -v $PWD:/project \
                         -v $PWD/${TRIVY_REPORT_DIR}:/root/reports \
@@ -183,7 +185,7 @@ pipeline {
                         --exit-code 0 \
                         --format json \
                         --output /root/reports/trivy-fs-report.json
-                """
+                '''
             }
             post {
                 always {
@@ -195,23 +197,24 @@ pipeline {
         stage('🚀 Push Docker vers DockerHub') {
             steps {
                 withCredentials([string(credentialsId: 'DOCKER-HUB-TOKEN', variable: 'DOCKER_TOKEN')]) {
-                    sh """
-                        echo "$DOCKER_TOKEN" | docker login -u "${DOCKER_HUB_USER}" --password-stdin
+                    sh '''
+                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
                         docker tag ${IMAGE_TAG} ${IMAGE_FULL}
                         docker push ${IMAGE_FULL}
                         docker logout
-                    """
+                    '''
                 }
             }
         }
 
         stage('🧹 Nettoyage') {
             steps {
-                sh 'docker rmi ${IMAGE_TAG} || true'
-                sh 'docker system prune -f'
+                sh '''
+                    docker rmi ${IMAGE_TAG} || true
+                    docker system prune -f
+                '''
             }
         }
-
     }
 
     post {
@@ -225,4 +228,4 @@ pipeline {
             cleanWs()
         }  
     }
-
+}
