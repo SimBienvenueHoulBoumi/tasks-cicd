@@ -10,6 +10,9 @@ pipeline {
     tools {
         jdk 'jdk'
         maven 'maven'
+        scanner 'scanner'
+        maven 'maven'
+        docker 'docker'
     }
 
     environment {
