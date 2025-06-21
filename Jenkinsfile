@@ -63,14 +63,18 @@ pipeline {
                     withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
                         script {
                             def scannerHome = tool name: 'sonarscanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-                            sh """
+                            sh """ 
+                                #!/bin/bash
+
                                 ${scannerHome}/bin/sonar-scanner \
-                                -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                -Dsonar.projectKey=$SONAR_PROJECT_KEY \
                                 -Dsonar.sources=src \
                                 -Dsonar.java.binaries=target/classes \
-                                -Dsonar.token=${SONAR_TOKEN} \
-                                -Dsonar.host.url=${SONAR_HOST_URL}
-                            """
+                                -Dsonar.token=$SONAR_TOKEN \
+                                -Dsonar.host.url=$SONAR_HOST_URL
+                                
+                                """
+
                         }
                     }
                 }
