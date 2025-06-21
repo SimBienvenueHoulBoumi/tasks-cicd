@@ -84,12 +84,12 @@ pipeline {
         stage('📊 Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                    withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR-TOKEN')]) {
                         sh '''
                              mvn sonar:sonar \
                             -Dsonar.projectKey=$SONAR_PROJECT_KEY \
                             -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.token=$SONAR_TOKEN
+                            -Dsonar.token=$SONAR-TOKEN
                         '''
                     }
                 }
