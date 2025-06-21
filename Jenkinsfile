@@ -104,7 +104,8 @@ pipeline {
                 steps {
                     withSonarQubeEnv('SonarQube') {
                         withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
-                            sh "
+                      
+                        sh '''
                                 mvn clean verify sonar:sonar \
                                     -Dsonar.projectKey=tasks \
                                     -Dsonar.host.url=${SONAR_HOST_URL} \
@@ -123,7 +124,7 @@ pipeline {
                                     -Dsonar.java.target=17 \
                                     -Dsonar.scm.provider=git \
                                     -Dsonar.scm.disabled=false \
-                            "
+                            '''
                         }
                     }
                 }
