@@ -15,7 +15,7 @@ pipeline {
     environment {
         APP_NAME = 'tasks-cicd'
         IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
-        SONAR_HOST_URL = 'http://localhost:9000/'
+        SONAR_HOST_URL = 'http://sonarqube:9000'
         SONAR_TOKEN = credentials('SONAR_TOKEN')
         AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS'
     }
@@ -160,7 +160,7 @@ pipeline {
                     credentialsId: 'DOCKER_HUB_TOKEN', 
                     variable: 'DOCKER_TOKEN')]) {
                         sh '''
-                            echo "$DOCKER_TOKEN" | docker login -u "simbienvenuehoulboumi" --password-stdin
+                            echo "$DOCKER_TOKEN" | docker login -u "brhulla@gmail.com" --password-stdin
                             docker tag ${IMAGE_TAG} docker.io/simbienvenuehoulboumi/${IMAGE_TAG}
                             docker push docker.io/simbienvenuehoulboumi/${IMAGE_TAG}
                             docker logout
