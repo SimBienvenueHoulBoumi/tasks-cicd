@@ -95,15 +95,18 @@ pipeline {
         stage('📊 Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh """
-                        ./mvnw sonar:sonar \
-                          -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                          -Dsonar.host.url=${SONAR_HOST_URL} \
-                          -Dsonar.token=${SONAR_TOKEN}
-                    """
+                    withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
+                        sh '''
+                            ./mvnw sonar:sonar \
+                            -Dsonar.projectKey=tasks \
+                            -Dsonar.host.url=$SONAR_HOST_URL \
+                            -Dsonar.token=$TOKEN
+                        '''
+                    }
                 }
             }
         }
+
 
         stage('🔐 Analyse sécurité OWASP') {
             steps {
