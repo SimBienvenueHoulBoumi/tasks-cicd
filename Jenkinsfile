@@ -169,7 +169,7 @@ pipeline {
             echo '❌ Échec du pipeline.'
         }
         always {
-            node {
+            node('jenkins-agent') {
                 cleanWs()
             }
         }
