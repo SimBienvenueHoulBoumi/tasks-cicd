@@ -18,7 +18,7 @@ pipeline {
         SONAR_HOST_URL = 'http://localhost:9000'
         SONAR_TOKEN = credentials('SONAR_TOKEN')
         AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS'
-        DOCKER_HUB_TOKEN = credentials('DOCKER_HUB_TOKEN')
+        DOCKER_HUB_TOKEN = credentials('DOCKER-HUB-TOKEN')
     }
 
     options {
