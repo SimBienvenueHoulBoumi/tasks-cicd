@@ -11,7 +11,7 @@ pipeline {
     tools {
         jdk 'jdk'         // Déclaré dans Jenkins > Global Tools > JDK
         maven 'maven'     // Idem pour Maven
-        git 'git'         // Ajoute un outil Git si "Selected Git installation does not exist"
+        git 'Default'         // Ajoute un outil Git si "Selected Git installation does not exist"
     }
 
     environment {
