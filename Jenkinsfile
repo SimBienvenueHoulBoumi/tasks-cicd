@@ -92,12 +92,20 @@ pipeline {
             }
         }
 
+        stage('🧪 Vérif injection token') {
+            steps {
+                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
+                    sh 'echo "✅ TOKEN détecté : ${TOKEN:0:5}********"'
+                }
+            }
+        }
+
         stage('📊 Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
                         sh '''
-                            ./mvnw sonar:sonar \
+                            ./mvnw clean verify sonar:sonar \
                             -Dsonar.projectKey=tasks \
                             -Dsonar.host.url=http://localhost:9000 \
                             -Dsonar.token=$TOKEN
@@ -106,7 +114,6 @@ pipeline {
                 }
             }
         }
-
 
         stage('🔐 Analyse sécurité OWASP') {
             steps {
