@@ -15,10 +15,10 @@ pipeline {
     environment {
         APP_NAME = 'tasks-cicd'
         IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
-        SONAR_HOST_URL = 'http://sonarqube:9000'
+        SONAR_HOST_URL = 'http://localhost:9000'
         SONAR_TOKEN = credentials('SONAR_TOKEN')
         AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS'
-        DOCKER_USER = 'brhulla@gmail.com'
+        DOCKER_HUB_TOKEN = credentials('DOCKER_HUB_TOKEN')
     }
 
     options {
@@ -141,7 +141,7 @@ pipeline {
                         --exit-code 0 \
                         --format json \
                         --output /root/reports/trivy-fs-report.json
-             '''
+                '''
             }
             post {
                 always {
@@ -151,23 +151,26 @@ pipeline {
         }
 
         stage('🚀 Push Docker vers DockerHub') {
-            environment {
-                REGISTRY = 'docker.io/brhulla'
-                IMAGE_FULL = "${REGISTRY}/${IMAGE_TAG}"
+        environment {
+            REGISTRY = 'docker.io/brhulla'
+            IMAGE_FULL = "${REGISTRY}/${IMAGE_TAG}"
+        }
+        steps {
+            withCredentials([string(credentialsId: 'DOCKER_HUB_TOKEN', variable: 'DOCKER_TOKEN')]) {
+                sh '''
+                    echo "$DOCKER_TOKEN" | docker login -u "brhulla@gmail.com" --password-stdin
+                    docker tag ${IMAGE_TAG} ${IMAGE_FULL}
+                    docker push ${IMAGE_FULL}
+                    docker logout
+                '''
             }
+        }
+    }
+
+        stage('🧹 Nettoyage') {
             steps {
-                withCredentials([
-                    string(
-                        credentialsId: 'DOCKER_HUB_TOKEN', 
-                        variable: 'DOCKER_TOKEN')
-                    ]) {
-                    sh '''
-                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker tag ${IMAGE_TAG} ${IMAGE_FULL}
-                        docker push ${IMAGE_FULL}
-                        docker logout
-                    '''
-                }
+                sh 'docker rmi ${IMAGE_TAG} || true'
+                sh 'docker system prune -f'
             }
         }
 
@@ -185,3 +188,4 @@ pipeline {
         }
     }
 }
+ 
