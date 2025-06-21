@@ -62,7 +62,7 @@ pipeline {
         stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
-                    if [ ! -f "./mvnw" ]; then
+                    if [ ! -f "mvn" ]; then
                         echo "➡ Génération du Maven Wrapper..."
                         mvn -N io.takari:maven:wrapper
                     fi
@@ -72,7 +72,7 @@ pipeline {
 
         stage('🔨 Build & Tests') {
             steps {
-                sh './mvnw clean verify'
+                sh 'mvn clean verify'
             }
             post {
                 always {
@@ -86,7 +86,7 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                         sh '''
-                           ./mvnw clean verify sonar:sonar \
+                           mvn clean verify sonar:sonar \
                             -Dsonar.projectKey=$SONAR_PROJECT_KEY \
                             -Dsonar.host.url=$SONAR_HOST_URL\
                             -Dsonar.token=$SONAR_TOKEN \
@@ -108,7 +108,7 @@ pipeline {
         stage('🔐 Analyse sécurité OWASP') {
             steps {
                 sh '''
-                    ./mvnw org.owasp:dependency-check-maven:check \
+                    mvn org.owasp:dependency-check-maven:check \
                         -Dformat=XML \
                         -DoutputDirectory=$OWASP_REPORT_DIR
                 '''
