@@ -13,7 +13,7 @@ import static org.mockito.Mockito.*;
 public class TasksCreateTaskTest {
 
     @Test
-    public void testCreateTask() {
+    void testCreateTask() {
         // Arrange
         TasksRepository mockRepo = mock(TasksRepository.class);
         TasksCreateTask service = new TasksCreateTask(mockRepo);

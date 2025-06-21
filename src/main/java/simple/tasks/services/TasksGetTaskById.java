@@ -2,8 +2,6 @@ package simple.tasks.services;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import org.springframework.stereotype.Service;
-
 import simple.tasks.exceptions.ResourceNotFoundException;
 import simple.tasks.jpa.TasksRepository;
 import simple.tasks.models.Tasks;
