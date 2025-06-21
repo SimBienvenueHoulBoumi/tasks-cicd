@@ -80,17 +80,12 @@ pipeline {
             }
         }
 
-        stage('📊 Analyse SonarQube') {
+        stage('📊 SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonnarScanner') {
-                    withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR-TOKEN')]) {
-                        sh '''
-                            mvn sonar:sonar \
-                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.token=$SONAR-TOKEN
-                        '''
-                    }
+                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                withSonarQubeEnv('sonarserver') {
+                    sh 'mvn clean verify sonar:sonar -Dsonar.login=$SONAR_TOKEN'
+                }
                 }
             }
         }
