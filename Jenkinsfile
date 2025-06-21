@@ -60,15 +60,19 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
+                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                 withSonarQubeEnv('sonarserver') {
                     sh '''
-                    mvn clean verify sonar:sonar -Dsonar.token=$SONAR_TOKEN
+                    mvn clean verify sonar:sonar \
+                        -Dsonar.projectKey=simple:tasks \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.token=$SONAR_TOKEN
                     '''
                 }
                 }
-            }
+           }
         }
+
 
         stage('🔧 Maven Wrapper') {
             steps {
