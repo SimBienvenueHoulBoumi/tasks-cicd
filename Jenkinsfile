@@ -51,14 +51,14 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-                    withSonarQubeEnv('sonarserver') {
+                withSonarQubeEnv('sonarserver') {
+                    withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
                         script {
                             def scannerHome = tool name: 'sonarscanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
                             sh """
                                 ${scannerHome}/bin/sonar-scanner \
-                                -Dsonar.projectKey=tasks \
-                                -Dsonar.projectName=tasks \
+                                -Dsonar.projectKey=demo-rest-api \
+                                -Dsonar.projectName=demo-rest-api \
                                 -Dsonar.projectVersion=0.0.1 \
                                 -Dsonar.sources=src \
                                 -Dsonar.java.binaries=target/classes \
@@ -72,7 +72,6 @@ pipeline {
                 }
             }
         }
-
 
         stage('🔧 Maven Wrapper') {
             steps {
