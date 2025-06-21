@@ -96,7 +96,7 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
                         sh '''#!/bin/bash
-                        ./mvnw clean verify sonar:sonar \
+                            mvn clean verify sonar:sonar \
                             -Dsonar.projectKey=tasks \
                             -Dsonar.host.url=http://localhost:9000 \
                             -Dsonar.token=$TOKEN \
