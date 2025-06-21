@@ -223,6 +223,6 @@ pipeline {
         }
         always {
             cleanWs()
-        }
+        }  
     }
-}
+
