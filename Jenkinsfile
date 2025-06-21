@@ -10,18 +10,35 @@ pipeline {
     tools {
         jdk 'jdk'
         maven 'maven'
-        scanner 'scanner'
-        maven 'maven'
-        docker 'docker'
+        dockerTool 'docker'
     }
 
     environment {
+        // 🏷️ Infos projet
         APP_NAME = 'tasks-cicd'
-        IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
+        SONAR_PROJECT_KEY = 'tasks'
+        GIT_REPO_URL = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
+        GIT_BRANCH = '*/main'
+
+        // 📊 SonarQube
         SONAR_HOST_URL = 'http://localhost:9000'
         SONAR_TOKEN = credentials('SONAR_TOKEN')
-        AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS'
+
+        // 🐳 Docker
+        DOCKER_HUB_USER = 'brhulla@gmail.com'
+        DOCKER_HUB_NAMESPACE = 'docker.io/brhulla'
         DOCKER_HUB_TOKEN = credentials('DOCKER-HUB-TOKEN')
+
+        // 🔒 Credentials
+        AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS'
+
+        // 🧬 Trivy & Sécurité
+        TRIVY_REPORT_DIR = 'trivy-reports'
+        OWASP_REPORT_DIR = 'dependency-report'
+
+        // 🏗️ Tag de build
+        IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_FULL = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
     }
 
     options {
@@ -34,7 +51,9 @@ pipeline {
         stage('✅ Vérification des variables') {
             steps {
                 echo "🔍 Docker image   : ${IMAGE_TAG}"
+                echo "🔍 DockerHub path : ${IMAGE_FULL}"
                 echo "🔍 SonarQube URL  : ${SONAR_HOST_URL}"
+                echo "🔍 Git repository : ${GIT_REPO_URL} (${GIT_BRANCH})"
             }
         }
 
@@ -42,9 +61,9 @@ pipeline {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: '*/main']],
+                    branches: [[name: "${GIT_BRANCH}"]],
                     userRemoteConfigs: [[
-                        url: 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git',
+                        url: "${GIT_REPO_URL}",
                         credentialsId: "${AGENT_CREDENTIALS}"
                     ]]
                 ])
@@ -76,23 +95,23 @@ pipeline {
         stage('📊 Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh '''
+                    sh """
                         ./mvnw sonar:sonar \
-                            -Dsonar.projectKey=tasks \
-                            -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.token=${SONAR_TOKEN}
-                    '''
+                          -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                          -Dsonar.host.url=${SONAR_HOST_URL} \
+                          -Dsonar.token=${SONAR_TOKEN}
+                    """
                 }
             }
         }
 
         stage('🔐 Analyse sécurité OWASP') {
             steps {
-                sh 'mvn org.owasp:dependency-check-maven:check -Dformat=XML -DoutputDirectory=dependency-report'
+                sh "mvn org.owasp:dependency-check-maven:check -Dformat=XML -DoutputDirectory=${OWASP_REPORT_DIR}"
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'dependency-report/dependency-check-report.xml', allowEmptyArchive: true
+                    archiveArtifacts artifacts: "${OWASP_REPORT_DIR}/dependency-check-report.xml", allowEmptyArchive: true
                 }
             }
         }
@@ -105,22 +124,22 @@ pipeline {
 
         stage('🛡️ Trivy – Analyse image') {
             steps {
-                sh '''
-                    mkdir -p trivy-reports
+                sh """
+                    mkdir -p ${TRIVY_REPORT_DIR}
                     docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
-                        -v $PWD/trivy-reports:/root/reports \
+                        -v $PWD/${TRIVY_REPORT_DIR}:/root/reports \
                         aquasec/trivy:latest image \
                         --exit-code 0 \
                         --severity CRITICAL,HIGH \
                         --format json \
                         --output /root/reports/trivy-image-report.json \
                         ${IMAGE_TAG}
-                '''
+                """
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'trivy-reports/trivy-image-report.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/trivy-image-report.json", allowEmptyArchive: true
                 }
                 failure {
                     echo '🚨 Vulnérabilités critiques détectées dans l’image Docker.'
@@ -130,40 +149,35 @@ pipeline {
 
         stage('🧬 Trivy – Analyse code source') {
             steps {
-                sh '''
+                sh """
                     docker run --rm \
                         -v $PWD:/project \
-                        -v $PWD/trivy-reports:/root/reports \
+                        -v $PWD/${TRIVY_REPORT_DIR}:/root/reports \
                         aquasec/trivy:latest fs /project \
                         --exit-code 0 \
                         --format json \
                         --output /root/reports/trivy-fs-report.json
-                '''
+                """
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'trivy-reports/trivy-fs-report.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/trivy-fs-report.json", allowEmptyArchive: true
                 }
             }
         }
 
         stage('🚀 Push Docker vers DockerHub') {
-            environment {
-                REGISTRY = 'docker.io/brhulla'
-                IMAGE_FULL = "${REGISTRY}/${IMAGE_TAG}"
-            }
             steps {
                 withCredentials([string(credentialsId: 'DOCKER-HUB-TOKEN', variable: 'DOCKER_TOKEN')]) {
-                    sh '''
-                        echo "$DOCKER_TOKEN" | docker login -u "brhulla@gmail.com" --password-stdin
+                    sh """
+                        echo "$DOCKER_TOKEN" | docker login -u "${DOCKER_HUB_USER}" --password-stdin
                         docker tag ${IMAGE_TAG} ${IMAGE_FULL}
                         docker push ${IMAGE_FULL}
                         docker logout
-                    '''
+                    """
                 }
             }
         }
-
 
         stage('🧹 Nettoyage') {
             steps {
@@ -186,4 +200,3 @@ pipeline {
         }
     }
 }
- 
