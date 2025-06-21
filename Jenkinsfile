@@ -51,10 +51,11 @@ pipeline {
 
         stage('📊 SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonarserver') {
+                withSonarQubeEnv('sonarserver') { // nom de ton serveur défini dans Jenkins > SonarQube
                 withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
                     script {
                     def scannerHome = tool name: 'sonarscanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+
                     sh """
                         ${scannerHome}/bin/sonar-scanner \
                         -Dsonar.projectKey=demo-rest-api \
@@ -72,7 +73,6 @@ pipeline {
                 }
             }
         }
-
 
         stage('🔧 Maven Wrapper') {
             steps {
