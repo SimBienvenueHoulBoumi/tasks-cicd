@@ -101,14 +101,32 @@ pipeline {
         }
 
         stage('📊 Analyse SonarQube') {
-            steps {
-                sh """
-                    ./mvnw sonar:sonar \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                        -Dsonar.host.url=${SONAR_HOST_URL} \
-                        -Dsonar.login=${SONAR_TOKEN} \
-                        -Dsonar.java.binaries=target/classes
-                """
+                steps {
+                    withSonarQubeEnv('SonarQube') {
+                        withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'TOKEN')]) {
+                            sh "
+                                mvn clean verify sonar:sonar \
+                                    -Dsonar.projectKey=tasks \
+                                    -Dsonar.host.url=${SONAR_HOST_URL} \
+                                    -Dsonar.token=${TOKEN} \
+                                    -Dsonar.java.binaries=target/classes \
+                                    -Dsonar.sources=src/main/java \
+                                    -Dsonar.tests=src/test/java \
+                                    -Dsonar.java.test.binaries=target/test-classes \
+                                    -Dsonar.java.coveragePlugin=jacoco \
+                                    -Dsonar.jacoco.reportPaths=target/jacoco.exec \
+                                    -Dsonar.language=java \
+                                    -Dsonar.projectVersion=${BUILD_NUMBER} \
+                                    -Dsonar.sourceEncoding=UTF-8 \
+                                    -Dsonar.exclusions=src/main/resources/**,src/test/resources/**,**/application.properties,**/application.yml \
+                                    -Dsonar.java.source=17 \
+                                    -Dsonar.java.target=17 \
+                                    -Dsonar.scm.provider=git \
+                                    -Dsonar.scm.disabled=false \
+                            "
+                        }
+                    }
+                }
             }
         }
 
