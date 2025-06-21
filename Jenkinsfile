@@ -18,6 +18,7 @@ pipeline {
         SONAR_HOST_URL = 'http://sonarqube:9000'
         SONAR_TOKEN = credentials('SONAR_TOKEN')
         AGENT_CREDENTIALS = 'JENKINS-AGENT-CREDENTIALS'
+        DOCKER_USER = 'brhulla@gmail.com'
     }
 
     options {
@@ -140,7 +141,7 @@ pipeline {
                         --exit-code 0 \
                         --format json \
                         --output /root/reports/trivy-fs-report.json
-                '''
+             '''
             }
             post {
                 always {
@@ -151,22 +152,22 @@ pipeline {
 
         stage('🚀 Push Docker vers DockerHub') {
             environment {
-                REGISTRY = 'docker.io/simbienvenuehoulboumi'
+                REGISTRY = 'docker.io/brhulla'
                 IMAGE_FULL = "${REGISTRY}/${IMAGE_TAG}"
             }
             steps {
-               withCredentials(
-                [string(
-                    credentialsId: 'DOCKER_HUB_TOKEN', 
-                    variable: 'DOCKER_TOKEN')]) {
-                        sh '''
-                            echo "$DOCKER_TOKEN" | docker login -u "brhulla@gmail.com" --password-stdin
-                            docker tag ${IMAGE_TAG} docker.io/simbienvenuehoulboumi/${IMAGE_TAG}
-                            docker push docker.io/simbienvenuehoulboumi/${IMAGE_TAG}
-                            docker logout
-                        '''
+                withCredentials([
+                    string(
+                        credentialsId: 'DOCKER_HUB_TOKEN', 
+                        variable: 'DOCKER_TOKEN')
+                    ]) {
+                    sh '''
+                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker tag ${IMAGE_TAG} ${IMAGE_FULL}
+                        docker push ${IMAGE_FULL}
+                        docker logout
+                    '''
                 }
-
             }
         }
 
@@ -184,4 +185,3 @@ pipeline {
         }
     }
 }
- 
