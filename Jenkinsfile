@@ -82,22 +82,18 @@ pipeline {
         }
 
         stage('📊 Analyse SonarQube') {
-            stage('📊 Analyse SonarQube') {
-                steps {
-                    withSonarQubeEnv('SonarQube') {
-                        withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-                            sh '''
-                                ./mvnw clean verify sonar:sonar \
-                                -Dsonar.projectKey=tasks \
-                                -Dsonar.host.url=$SONAR_HOST_URL \
-                                -Dsonar.token=$SONAR_TOKEN
-                            '''
-                        }
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                            ./mvnw clean verify sonar:sonar \
+                            -Dsonar.projectKey=tasks \
+                            -Dsonar.host.url=$SONAR_HOST_URL \
+                            -Dsonar.token=$SONAR_TOKEN
+                        '''
                     }
                 }
             }
-
-
             post {
                 failure {
                     echo '❌ Échec de l’analyse de SonarQube. Vérifiez le token, l’URL du serveur, et les permissions du projet.'
@@ -107,6 +103,7 @@ pipeline {
                 }
             }
         }
+
 
         stage('🔐 Analyse sécurité OWASP') {
             steps {
