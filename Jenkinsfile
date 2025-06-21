@@ -1,45 +1,35 @@
-/**
- * 🔧 Jenkinsfile – Pipeline CI/CD Spring Boot
- * Étapes : Checkout | Analyse SonarQube | Build & Tests | Sécurité | Docker | Trivy | Nettoyage
- */
-
 pipeline {
 
-    agent { label 'jenkins-agent' } // 🔧 Agent Jenkins avec Docker, Maven, Java, etc.
+    agent { label 'jenkins-agent' }
 
     tools {
-        jdk 'jdk'           // 🔧 JDK configuré dans Jenkins (Manage Jenkins > Global Tool Configuration)
-        maven 'maven'       // 🔧 Maven configuré dans Jenkins
+        jdk 'jdk'
+        maven 'maven'
     }
 
     environment {
-        // 🔖 Variables de configuration du projet
         APP_NAME = 'tasks-cicd'
-        SONAR_PROJECT_KEY = 'tasks-cicd' // ✅ Doit correspondre au projectKey défini dans SonarQube
+        SONAR_PROJECT_KEY = 'tasks-cicd'
         GIT_REPO_URL = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
         GIT_BRANCH = '*/main'
 
-        // 🔐 SonarQube local
-        SONAR_HOST_URL = 'http://localhost:9000' // ✅ Utiliser SonarQube local, pas SonarCloud
-        SONARQUBE_INSTANCE = 'sonarserver'       // ✅ Nom défini dans Jenkins > SonarQube configuration
+        SONAR_HOST_URL = 'http://host.docker.internal:9000'
+        SONARQUBE_INSTANCE = 'sonarserver'
 
-        // 🐳 Docker
         DOCKER_HUB_USER = 'brhulla@gmail.com'
         DOCKER_HUB_NAMESPACE = 'docker.io/brhulla'
         IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
         IMAGE_FULL = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
 
-        // 📦 Sécurité et reporting
         TRIVY_REPORT_DIR = 'trivy-reports'
         OWASP_REPORT_DIR = 'dependency-report'
 
-        // 🔑 Jenkins credentials ID
         GITHUB_CREDENTIALS = 'GITHUB-CREDENTIALS'
     }
 
     options {
-        skipDefaultCheckout true  // ✅ On fait un checkout personnalisé
-        timestamps()              // ⏱️ Affiche les timestamps dans la console
+        skipDefaultCheckout true
+        timestamps()
     }
 
     stages {
@@ -59,20 +49,18 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withSonarQubeEnv('sonarserver') {
-                    withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
-                        sh '''#!/bin/bash
-                        docker run --rm \
-                            -v $PWD:/usr/src \
-                            -e SONAR_TOKEN=$SONAR_TOKEN \
-                            sonarsource/sonar-scanner-cli \
-                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                            -Dsonar.sources=src \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.token=$SONAR_TOKEN \
-                            -Dsonar.host.url=http://host.docker.internal:9000
-                        '''
-                    }
+                withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
+                    sh '''#!/bin/bash
+                    docker run --rm \
+                        -v "$PWD":/usr/src \
+                        -e SONAR_TOKEN=$SONAR_TOKEN \
+                        sonarsource/sonar-scanner-cli \
+                        -Dsonar.projectKey=tasks-cicd \
+                        -Dsonar.sources=src \
+                        -Dsonar.java.binaries=target/classes \
+                        -Dsonar.token=$SONAR_TOKEN \
+                        -Dsonar.host.url=http://host.docker.internal:9000
+                    '''
                 }
             }
         }
@@ -90,11 +78,11 @@ pipeline {
 
         stage('🔨 Build & Tests') {
             steps {
-                sh 'mvn clean verify' // ✅ Utilise le wrapper généré pour cohérence des builds
+                sh './mvnw clean verify'
             }
             post {
                 always {
-                    junit 'target/surefire-reports/*.xml' // ✅ Archive des résultats de tests
+                    junit 'target/surefire-reports/*.xml'
                 }
             }
         }
@@ -102,7 +90,7 @@ pipeline {
         stage('🔐 Analyse sécurité OWASP') {
             steps {
                 sh """
-                    mvn org.owasp:dependency-check-maven:check \
+                    ./mvnw org.owasp:dependency-check-maven:check \
                         -Dformat=XML \
                         -DoutputDirectory=${OWASP_REPORT_DIR}
                 """
@@ -116,7 +104,7 @@ pipeline {
 
         stage('🐳 Build Docker') {
             steps {
-                sh 'docker build -t $IMAGE_TAG .' // 🔧 Construit l’image avec tag unique
+                sh 'docker build -t $IMAGE_TAG .'
             }
         }
 
@@ -138,9 +126,6 @@ pipeline {
             post {
                 always {
                     archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/trivy-image-report.json", allowEmptyArchive: true
-                }
-                failure {
-                    echo '🚨 Vulnérabilités critiques détectées dans l’image Docker.'
                 }
             }
         }
@@ -166,10 +151,10 @@ pipeline {
 
         stage('🧹 Nettoyage') {
             steps {
-                sh """
+                sh '''
                     docker rmi ${IMAGE_TAG} || true
                     docker system prune -f
-                """
+                '''
             }
         }
     }
@@ -183,7 +168,7 @@ pipeline {
         }
         always {
             node('jenkins-agent') {
-                cleanWs() // 🧹 Nettoie l’espace de travail même en cas d’échec
+                cleanWs()
             }
         }
     }
