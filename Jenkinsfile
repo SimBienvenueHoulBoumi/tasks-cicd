@@ -22,7 +22,6 @@ pipeline {
 
         // 📊 SonarQube
         SONAR_HOST_URL = 'http://localhost:9000'
-        SONAR_TOKEN = 'sqa_b0ae1324f5f5c8b03253bda64c3e0db91b51795a'
 
         // 🐳 Docker
         DOCKER_HUB_USER = 'brhulla@gmail.com'
