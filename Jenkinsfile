@@ -11,23 +11,21 @@ pipeline {
         jdk 'jdk'       // JDK 17 (défini dans Jenkins Global Tools)
         maven 'maven'   // Maven 3.9
     }
-
+/**
     environment {
-        SONAR_HOST_URL  = "${env.SONAR_HOST_URL}"     // Injecté via docker-compose
-        DOCKER_IMAGE    = "tasks-app:latest"          // 📦 Nom de l’image locale
+        DOCKER_IMAGE    = "tasks-app:latest"
     }
-
+**/
     stages {
 
+/**
         stage('✅ Vérification des variables') {
             steps {
                 echo "🧪 Vérif des variables d’environnement..."
-                echo "SONAR_TOKEN défini ? ${env.SONAR_TOKEN != null}"
-                echo "SONAR_HOST_URL     = ${env.SONAR_HOST_URL}"
                 echo "DOCKER_IMAGE       = ${env.DOCKER_IMAGE}"
             }
         }
-
+**/
         stage('📥 Checkout Git') {
             steps {
                 git url: 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git', branch: 'main'
@@ -59,17 +57,15 @@ pipeline {
                 junit 'target/surefire-reports/*.xml'
             }
         }
-
+/**
         stage('📊 Analyse SonarQube') {
             steps {
-                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
-                    sh """
-                        ./mvnw sonar:sonar \
-                            -Dsonar.projectKey=tasks \
-                            -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.login=${SONAR_TOKEN}
-                    """
-                }
+                sh """
+                    ./mvnw sonar:sonar \
+                        -Dsonar.projectKey=tasks \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.login=${SONAR_TOKEN}
+                """
             }
         }
 
@@ -80,21 +76,7 @@ pipeline {
                 }
             }
         }
-
-        /*
-        stage('📤 Push Docker Image') {
-            environment {
-                REGISTRY_CREDENTIALS = credentials('docker-hub-creds')
-            }
-            steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'REGISTRY_CREDENTIALS') {
-                        docker.image("${DOCKER_IMAGE}").push()
-                    }
-                }
-            }
-        }
-        */
+**/
     }
 
     post {
