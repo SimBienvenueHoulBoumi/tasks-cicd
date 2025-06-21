@@ -10,7 +10,6 @@ pipeline {
     tools {
         jdk 'jdk'       // JDK 17 (défini dans Jenkins Global Tools)
         maven 'maven'   // Maven 3.9
-        docker 'docker' // Docker (défini dans Jenkins Global Tools)
     }
 
     environment {
