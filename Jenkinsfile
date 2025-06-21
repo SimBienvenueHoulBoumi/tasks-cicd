@@ -2,7 +2,6 @@
  * 🔧 Jenkinsfile – Pipeline CI/CD Spring Boot
  * 📦 Maven build | 🧪 Tests | 📊 SonarQube | 🐳 Docker | 🔐 Sécurité (Trivy, OWASP)
  */
-
 pipeline {
 
     agent { label 'jenkins-agent' }
@@ -62,7 +61,7 @@ pipeline {
         stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
-                    if [ ! -f "mvn" ]; then
+                    if [ ! -f "./mvnw" ]; then
                         echo "➡ Génération du Maven Wrapper..."
                         mvn -N io.takari:maven:wrapper
                     fi
@@ -72,7 +71,7 @@ pipeline {
 
         stage('🔨 Build & Tests') {
             steps {
-                sh 'mvn clean verify'
+                sh './mvnw clean verify'
             }
             post {
                 always {
@@ -84,16 +83,15 @@ pipeline {
         stage('📊 Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR-TOKEN')]) {
+                    withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                         sh '''
-                             mvn sonar:sonar \
-                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.token=$SONAR-TOKEN
+                            ./mvnw sonar:sonar \
+                                -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                                -Dsonar.host.url=$SONAR_HOST_URL \
+                                -Dsonar.token=$SONAR_TOKEN
                         '''
                     }
                 }
-            }
             }
             post {
                 failure {
@@ -105,11 +103,10 @@ pipeline {
             }
         }
 
-
         stage('🔐 Analyse sécurité OWASP') {
             steps {
                 sh '''
-                    mvn org.owasp:dependency-check-maven:check \
+                    ./mvnw org.owasp:dependency-check-maven:check \
                         -Dformat=XML \
                         -DoutputDirectory=$OWASP_REPORT_DIR
                 '''
