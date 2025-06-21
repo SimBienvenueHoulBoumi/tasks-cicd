@@ -59,7 +59,7 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withSonarQubeEnv("${SONARQUBE_INSTANCE}") {
+                withSonarQubeEnv('sonarserver') {
                     withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
                         script {
                             def scannerHome = tool name: 'sonarscanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
@@ -74,6 +74,7 @@ pipeline {
                         }
                     }
                 }
+
             }
         }
 
