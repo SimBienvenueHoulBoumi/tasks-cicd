@@ -26,7 +26,7 @@ pipeline {
         IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
         GITHUB_CREDENTIALS = 'GITHUB-CREDENTIALS'
         IMAGE_FULL = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
-        SONARQUBE_INSTANCE = 'sonarserver' // 🔧 Nom du serveur SonarQube configuré dans Jenkins
+        SONARQUBE_INSTANCE = 'sonarserver'
     }
 
     options {
@@ -49,27 +49,30 @@ pipeline {
             }
         }
 
-        stage('📊 SonarQube Analysis') {
+        stage('📊 Analyse SonarQube') {
             steps {
                 withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('sonarserver') {
-                        sh '''
-                            sonar-scanner \
-                            -Dsonar.projectKey=tasks \
-                            -Dsonar.projectName=tasks \
-                            -Dsonar.projectVersion=0.0.1 \
-                            -Dsonar.sources=src/main/java \
-                            -Dsonar.tests=src/test/java \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                            -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
-                            -Dsonar.token=$SONAR_TOKEN
-                        '''
+                        script {
+                            def scannerHome = tool name: 'sonarscanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+                            sh """
+                                ${scannerHome}/bin/sonar-scanner \
+                                -Dsonar.projectKey=demo-rest-api \
+                                -Dsonar.projectName=demo-rest-api \
+                                -Dsonar.projectVersion=0.0.1 \
+                                -Dsonar.sources=src \
+                                -Dsonar.java.binaries=target/classes \
+                                -Dsonar.junit.reportsPath=target/surefire-reports \
+                                -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                                -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
+                                -Dsonar.token=$SONAR_TOKEN
+                            """
+                        }
                     }
                 }
             }
         }
+
 
         stage('🔧 Maven Wrapper') {
             steps {
