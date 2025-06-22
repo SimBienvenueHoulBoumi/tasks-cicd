@@ -20,8 +20,8 @@ pipeline {
         SONAR_HOST_URL       = 'http://host.docker.internal:9000'
         SONARQUBE_INSTANCE   = 'sonarserver'
 
-        DOCKER_HUB_USER      = 'brhulla@gmail.com'
-        DOCKER_HUB_NAMESPACE = 'docker.io/brhulla'
+        DOCKER_HUB_USER      = 'xenon44'
+        DOCKER_HUB_NAMESPACE = 'docker.io/xenon44'
         IMAGE_TAG            = "${APP_NAME}:${BUILD_NUMBER}"
         IMAGE_FULL           = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
 
