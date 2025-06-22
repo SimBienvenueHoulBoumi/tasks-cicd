@@ -54,7 +54,7 @@ pipeline {
                 sh '''
                     if [ ! -f "./mvn" ]; then
                         echo "➡ Génération du Maven Wrapper..."
-                        mvn -N io.takari:maven:wrapper
+                        mvnw -N io.takari:maven:wrapper
                     fi
                 '''
             }
@@ -62,7 +62,7 @@ pipeline {
 
         stage('🔧 Compilation Maven') {
             steps {
-                sh './mvn clean compile'
+                sh './mvnw clean compile'
             }
         }
 
@@ -85,7 +85,7 @@ pipeline {
 
         stage('🔨 Build & Tests') {
             steps {
-                sh './mvn clean verify'
+                sh './mvnw clean verify'
             }
             post {
                 always {
