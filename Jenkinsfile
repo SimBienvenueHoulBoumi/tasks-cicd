@@ -52,9 +52,9 @@ pipeline {
         stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
-                    if [ ! -f "./mvn" ]; then
+                    if [ ! -f "./mvnw" ]; then
                         echo "➡ Génération du Maven Wrapper..."
-                        mvnw -N io.takari:maven:wrapper
+                        mvn -N io.takari:maven:wrapper
                     fi
                 '''
             }
@@ -130,7 +130,7 @@ pipeline {
                     passwordVariable: 'NEXUS_PASS'
                 )]) {
                     script {
-                        def NEXUS_REPO_HOST = "localhost:8083" // Adapter si exposé différemment
+                        def NEXUS_REPO_HOST = "localhost:8081" // Adapter si exposé différemment
                         def NEXUS_REPO_NAME = "docker-hosted"  // Nom du repo Nexus Docker (à créer s’il n’existe pas)
                         def NEXUS_IMAGE     = "${NEXUS_REPO_HOST}/${NEXUS_REPO_NAME}/${APP_NAME}:${BUILD_NUMBER}"
 
