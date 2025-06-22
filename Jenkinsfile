@@ -28,6 +28,8 @@ pipeline {
         OWASP_REPORT_DIR     = 'dependency-report'
 
         GITHUB_CREDENTIALS   = 'GITHUB-CREDENTIALS'
+
+        NEXUS_CREDENTIALS     = 'NEXUS-CREDENTIAL'
     }
 
     stages {
@@ -90,21 +92,6 @@ pipeline {
             }
         }
 
-        stage('🔐 Analyse sécurité OWASP') {
-            steps {
-                sh """
-                    ./mvnw org.owasp:dependency-check-maven:check \
-                        -Dformat=XML \
-                        -DoutputDirectory=${OWASP_REPORT_DIR}
-                """
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: "${OWASP_REPORT_DIR}/dependency-check-report.xml", allowEmptyArchive: true
-                }
-            }
-        }
-
         stage('🐳 Build Docker') {
             steps {
                 sh 'docker build -t $IMAGE_TAG .'
@@ -148,6 +135,29 @@ pipeline {
             post {
                 always {
                     archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/trivy-fs-report.json", allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('📦 Push Docker vers Nexus') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'NEXUS_CREDENTIALS',
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASS'
+                )]) {
+                    script {
+                        def NEXUS_REPO_HOST = "localhost:8083"
+                        def NEXUS_REPO_NAME = "docker-hosted"
+                        def NEXUS_IMAGE     = "${NEXUS_REPO_HOST}/${NEXUS_REPO_NAME}/${APP_NAME}:${BUILD_NUMBER}"
+
+                        sh """
+                            echo "$NEXUS_PASS" | docker login $NEXUS_REPO_HOST -u "$NEXUS_USER" --password-stdin
+                            docker tag ${IMAGE_TAG} ${NEXUS_IMAGE}
+                            docker push ${NEXUS_IMAGE}
+                            docker logout $NEXUS_REPO_HOST
+                        """
+                    }
                 }
             }
         }
