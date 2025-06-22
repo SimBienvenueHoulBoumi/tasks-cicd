@@ -7,9 +7,11 @@ pipeline {
         maven 'maven'
     }
 
-    properties([
+    options {
+        skipDefaultCheckout true
+        timestamps()
         buildDiscarder(logRotator(numToKeepStr: '5'))
-    ])
+    }
 
 
     environment {
