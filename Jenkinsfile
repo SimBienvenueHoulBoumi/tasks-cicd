@@ -7,13 +7,6 @@ pipeline {
         maven 'maven'
     }
 
-    options {
-        skipDefaultCheckout true
-        timestamps()
-        buildDiscarder(logRotator(numToKeepStr: '5'))
-    }
-
-
     environment {
         APP_NAME = 'tasks-cicd'
         SONAR_PROJECT_KEY = 'tasks-cicd'
