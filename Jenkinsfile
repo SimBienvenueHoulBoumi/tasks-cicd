@@ -37,19 +37,11 @@ pipeline {
 
         stage('🧾 Affichage des 5 derniers builds') {
             steps {
-                script {
-                    def response = httpRequest(
-                        url: "${env.BUILD_URL}../../api/json?tree=builds[number,result,timestamp]{0,5}",
-                        httpMode: 'GET',
-                        consoleLogResponseBody: true
-                    )
-                    def json = readJSON text: response.content
+                sh '''
                     echo "📌 Derniers builds :"
-                    json.builds.each {
-                        def date = new Date(it.timestamp)
-                        echo "#${it.number} - ${it.result} - ${date}"
-                    }
-                }
+                    curl -s ${BUILD_URL}../../api/json?tree=builds[number,result,timestamp] | \
+                        jq -r '.builds[:5][] | "#\(.number) - \(.result) - \(.timestamp | strftime("%Y-%m-%d %H:%M:%S"))"'
+                '''
             }
         }
 
