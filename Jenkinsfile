@@ -12,24 +12,26 @@ pipeline {
     }
 
     environment {
+        // Nom de l'application
         APP_NAME             = 'tasks-cicd'
-        SONAR_PROJECT_KEY    = 'tasks-cicd'
+
+        // Références Git
         GIT_REPO_URL         = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
         GIT_BRANCH           = '*/main'
 
+        // Clé projet SonarQube
+        SONAR_PROJECT_KEY    = 'tasks-cicd'
         SONAR_HOST_URL       = 'http://host.docker.internal:9000'
-        SONARQUBE_INSTANCE   = 'sonarserver'
 
-
+        // Nom de l'image Docker locale (tag temporaire)
         IMAGE_TAG            = "${APP_NAME}:${BUILD_NUMBER}"
-        IMAGE_FULL           = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
 
+        // Dossiers de rapports
         TRIVY_REPORT_DIR     = 'trivy-reports'
-        OWASP_REPORT_DIR     = 'dependency-report'
 
+        // Credentials Jenkins
         GITHUB_CREDENTIALS   = 'GITHUB-CREDENTIALS'
-
-        NEXUS_CREDENTIALS     = 'NEXUS-CREDENTIAL'
+        NEXUS_CREDENTIALS    = 'NEXUS-CREDENTIAL'
     }
 
     stages {
@@ -50,7 +52,7 @@ pipeline {
         stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
-                    if [ ! -f "./mvnw" ]; then
+                    if [ ! -f "./mvn" ]; then
                         echo "➡ Génération du Maven Wrapper..."
                         mvn -N io.takari:maven:wrapper
                     fi
@@ -60,7 +62,7 @@ pipeline {
 
         stage('🔧 Compilation Maven') {
             steps {
-                sh './mvnw clean compile'
+                sh './mvn clean compile'
             }
         }
 
@@ -83,7 +85,7 @@ pipeline {
 
         stage('🔨 Build & Tests') {
             steps {
-                sh './mvnw clean verify'
+                sh './mvn clean verify'
             }
             post {
                 always {
@@ -92,7 +94,7 @@ pipeline {
             }
         }
 
-        stage('🐳 Build Docker') {
+        stage('🐳 Build Docker Image') {
             steps {
                 sh 'docker build -t $IMAGE_TAG .'
             }
@@ -120,42 +122,25 @@ pipeline {
             }
         }
 
-        stage('🧬 Trivy – Analyse code source') {
-            steps {
-                sh """
-                    docker run --rm \
-                        -v $PWD:/project \
-                        -v $PWD/${TRIVY_REPORT_DIR}:/root/reports \
-                        aquasec/trivy:latest fs /project \
-                        --exit-code 0 \
-                        --format json \
-                        --output /root/reports/trivy-fs-report.json
-                """
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/trivy-fs-report.json", allowEmptyArchive: true
-                }
-            }
-        }
-
         stage('📦 Push Docker vers Nexus') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'NEXUS_CREDENTIALS',
+                    credentialsId: "${NEXUS_CREDENTIALS}",
                     usernameVariable: 'NEXUS_USER',
                     passwordVariable: 'NEXUS_PASS'
                 )]) {
                     script {
-                        def NEXUS_REPO_HOST = "localhost:8083"
-                        def NEXUS_REPO_NAME = "docker-hosted"
+                        def NEXUS_REPO_HOST = "localhost:8083" // Adapter si exposé différemment
+                        def NEXUS_REPO_NAME = "docker-hosted"  // Nom du repo Nexus Docker (à créer s’il n’existe pas)
                         def NEXUS_IMAGE     = "${NEXUS_REPO_HOST}/${NEXUS_REPO_NAME}/${APP_NAME}:${BUILD_NUMBER}"
 
+                        echo "✅ Push image vers Nexus : ${NEXUS_IMAGE}"
+
                         sh """
-                            echo "$NEXUS_PASS" | docker login $NEXUS_REPO_HOST -u "$NEXUS_USER" --password-stdin
+                            echo "${NEXUS_PASS}" | docker login ${NEXUS_REPO_HOST} -u "${NEXUS_USER}" --password-stdin
                             docker tag ${IMAGE_TAG} ${NEXUS_IMAGE}
                             docker push ${NEXUS_IMAGE}
-                            docker logout $NEXUS_REPO_HOST
+                            docker logout ${NEXUS_REPO_HOST}
                         """
                     }
                 }
