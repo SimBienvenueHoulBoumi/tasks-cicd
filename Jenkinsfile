@@ -122,7 +122,7 @@ pipeline {
             }
         }
 
-        stage('📦 Push Docker vers Nexus') {
+       stage('📦 Push Docker vers Nexus') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "${NEXUS_CREDENTIALS}",
@@ -130,14 +130,15 @@ pipeline {
                     passwordVariable: 'NEXUS_PASS'
                 )]) {
                     script {
-                        def NEXUS_REPO_HOST = "localhost:8081" // Adapter si exposé différemment
-                        def NEXUS_REPO_NAME = "docker-hosted"  // Nom du repo Nexus Docker (à créer s’il n’existe pas)
-                        def NEXUS_IMAGE     = "${NEXUS_REPO_HOST}/${NEXUS_REPO_NAME}/${APP_NAME}:${BUILD_NUMBER}"
+                        def NEXUS_REPO_HOST = "host.docker.internal:8081" // localhost dans Jenkins = conteneur, donc pas Nexus
+                        def NEXUS_REPO_NAME = "docker-hosted"
+                        def NEXUS_IMAGE     = "${NEXUS_REPO_HOST}/${APP_NAME}:${BUILD_NUMBER}"
 
                         echo "✅ Push image vers Nexus : ${NEXUS_IMAGE}"
 
+                        // Pas d'interpolation directe de secrets
                         sh """
-                            echo "${NEXUS_PASS}" | docker login ${NEXUS_REPO_HOST} -u "${NEXUS_USER}" --password-stdin
+                            echo \$NEXUS_PASS | docker login ${NEXUS_REPO_HOST} -u \$NEXUS_USER --password-stdin
                             docker tag ${IMAGE_TAG} ${NEXUS_IMAGE}
                             docker push ${NEXUS_IMAGE}
                             docker logout ${NEXUS_REPO_HOST}
@@ -146,6 +147,7 @@ pipeline {
                 }
             }
         }
+
 
         stage('🧹 Nettoyage') {
             steps {
