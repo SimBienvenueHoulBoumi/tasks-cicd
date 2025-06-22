@@ -47,6 +47,17 @@ pipeline {
             }
         }
 
+        stage('🔧 Maven Wrapper') {
+            steps {
+                sh '''
+                    if [ ! -f "mvnw" ]; then
+                        echo "➡ Génération du Maven Wrapper..."
+                        mvn -N io.takari:maven:wrapper
+                    fi
+                '''
+            }
+        }
+
         stage('🔧 Compilation Maven') {
             steps {
                 sh './mvnw clean compile'
@@ -54,10 +65,6 @@ pipeline {
         }
 
         stage('📊 Analyse SonarQube') {
-            environment {
-                SONAR_PROJECT_KEY = 'tasks-cicd'
-                SONAR_HOST_URL = 'http://host.docker.internal:9000'
-            }
             steps {
                 withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
                     sh '''
@@ -71,17 +78,6 @@ pipeline {
                             -Dsonar.host.url=$SONAR_HOST_URL
                     '''
                 }
-            }
-        }
-
-        stage('🔧 Maven Wrapper') {
-            steps {
-                sh '''
-                    if [ ! -f "mvnw" ]; then
-                        echo "➡ Génération du Maven Wrapper..."
-                        mvn -N io.takari:maven:wrapper
-                    fi
-                '''
             }
         }
 
@@ -154,6 +150,19 @@ pipeline {
             post {
                 always {
                     archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/trivy-fs-report.json", allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('🚀 Push Docker vers DockerHub') {
+            steps {
+                withCredentials([string(credentialsId: 'DOCKER_HUB_TOKEN', variable: 'DOCKER_TOKEN')]) {
+                    sh '''
+                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+                        docker tag $IMAGE_TAG $IMAGE_FULL
+                        docker push $IMAGE_FULL
+                        docker logout
+                    '''
                 }
             }
         }
