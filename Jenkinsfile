@@ -47,6 +47,12 @@ pipeline {
             }
         }
 
+        stage('🔧 Compilation Maven') {
+            steps {
+                sh './mvnw clean compile'
+            }
+        }
+
         stage('📊 Analyse SonarQube') {
             environment {
                 SONAR_PROJECT_KEY = 'tasks-cicd'
