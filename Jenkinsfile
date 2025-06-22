@@ -35,16 +35,15 @@ pipeline {
 
     stages {
 
-        stage('🧾 Affichage des 5 derniers builds') {
+       stage('🧾 Affichage des 5 derniers builds') {
             steps {
                 sh '''
                     echo "📌 Derniers builds :"
                     curl -s ${BUILD_URL}../../api/json?tree=builds[number,result,timestamp] | \
-                        jq -r '.builds[:5][] | "#\(.number) - \(.result) - \(.timestamp | strftime("%Y-%m-%d %H:%M:%S"))"'
+                    jq -r '.builds[:5][] | "#\(.number) - \(.result) - \(.timestamp | strftime(\\"%Y-%m-%d %H:%M:%S\\"))"'
                 '''
             }
         }
-
 
         stage('📥 Checkout Git') {
             steps {
