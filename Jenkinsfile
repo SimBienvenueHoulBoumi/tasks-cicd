@@ -38,15 +38,21 @@ pipeline {
         stage('🧾 Affichage des 5 derniers builds') {
             steps {
                 script {
-                    def job = currentBuild.rawBuild.parent
-                    def builds = job.builds.limit(5)
+                    def response = httpRequest(
+                        url: "${env.BUILD_URL}../../api/json?tree=builds[number,result,timestamp]{0,5}",
+                        httpMode: 'GET',
+                        consoleLogResponseBody: true
+                    )
+                    def json = readJSON text: response.content
                     echo "📌 Derniers builds :"
-                    builds.each {
-                        echo "#${it.number} - ${it.result} - ${it.getTimestampString()}"
+                    json.builds.each {
+                        def date = new Date(it.timestamp)
+                        echo "#${it.number} - ${it.result} - ${date}"
                     }
                 }
             }
         }
+
 
         stage('📥 Checkout Git') {
             steps {
