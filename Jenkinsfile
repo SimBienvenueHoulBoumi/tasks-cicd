@@ -34,17 +34,6 @@ pipeline {
 
     stages {
 
-        stage('📋 Liste des 5 derniers builds') {
-            steps {
-                script {
-                    def job = Jenkins.instance.getItemByFullName(env.JOB_NAME)
-                    def builds = job.getBuilds().limit(5)
-                    builds.each { build ->
-                        echo "Build #${build.number} - ${build.getResult()}"
-                    }
-                }
-            }
-        }
 
         stage('📥 Checkout Git') {
             steps {
@@ -62,7 +51,7 @@ pipeline {
         stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
-                    if [ ! -f "mvnw" ]; then
+                    if [ ! -f "mvn" ]; then
                         echo "➡ Génération du Maven Wrapper..."
                         mvn -N io.takari:maven:wrapper
                     fi
@@ -72,7 +61,7 @@ pipeline {
 
         stage('🔧 Compilation Maven') {
             steps {
-                sh './mvnw clean compile'
+                sh './mvn clean compile'
             }
         }
 
@@ -95,7 +84,7 @@ pipeline {
 
         stage('🔨 Build & Tests') {
             steps {
-                sh './mvnw clean verify'
+                sh './mvn clean verify'
             }
             post {
                 always {
@@ -107,7 +96,7 @@ pipeline {
         stage('🔐 Analyse sécurité OWASP') {
             steps {
                 sh """
-                    ./mvnw org.owasp:dependency-check-maven:check \
+                    ./mvn org.owasp:dependency-check-maven:check \
                         -Dformat=XML \
                         -DoutputDirectory=${OWASP_REPORT_DIR}
                 """
