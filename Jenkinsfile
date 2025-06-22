@@ -35,14 +35,18 @@ pipeline {
 
     stages {
 
-        stage('🧾 Affichage des 5 derniers builds') {
-            steps {
-                sh '''#!/bin/bash
+       stages {
+            // Existing stages: Checkout, SonarQube, Maven, Build, OWASP, Docker, Trivy, Nettoyage
+    stage('🧾 Affichage des 5 derniers builds') {
+          steps {
+            sh '''
                 echo "📌 Derniers builds :"
-                curl -s "${BUILD_URL}../../api/json?tree=builds[number,result,timestamp]" | jq -r '.builds[:5][] | "#\(.number) - \(.result) - \(.timestamp | strftime("%Y-%m-%d %H:%M:%S"))"'
-                '''
-            }
+                curl -s ${JENKINS_URL}job/${JOB_NAME}/api/json?tree=builds[number,result,timestamp] | \
+                jq -r '.builds[:5][] | "#\(.number) - \(.result) - \((.timestamp / 1000 | strftime(\\"%Y-%m-%d %H:%M:%S\\")))"'
+            '''
+           }
         }
+    }
 
         stage('📥 Checkout Git') {
             steps {
