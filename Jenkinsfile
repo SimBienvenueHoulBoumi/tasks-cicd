@@ -7,6 +7,11 @@ pipeline {
         maven 'maven'
     }
 
+    properties([
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+    ])
+
+
     environment {
         APP_NAME = 'tasks-cicd'
         SONAR_PROJECT_KEY = 'tasks-cicd'
