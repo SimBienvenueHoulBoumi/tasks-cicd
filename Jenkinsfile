@@ -13,7 +13,6 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '5'))
     }
 
-
     environment {
         APP_NAME = 'tasks-cicd'
         SONAR_PROJECT_KEY = 'tasks-cicd'
@@ -34,20 +33,16 @@ pipeline {
         GITHUB_CREDENTIALS = 'GITHUB-CREDENTIALS'
     }
 
-    options {
-        skipDefaultCheckout true
-        timestamps()
-    }
-
     stages {
 
-        stage('📋 Liste des 5 derniers builds') {
+        stage('🧾 Affichage des 5 derniers builds') {
             steps {
                 script {
-                    def job = Jenkins.instance.getItemByFullName(env.JOB_NAME)
-                    def builds = job.getBuilds().limit(5)
-                    builds.each { build ->
-                        echo "Build #${build.number} - ${build.getResult()}"
+                    def job = currentBuild.rawBuild.parent
+                    def builds = job.builds.limit(5)
+                    echo "📌 Derniers builds :"
+                    builds.each {
+                        echo "#${it.number} - ${it.result} - ${it.getTimestampString()}"
                     }
                 }
             }
