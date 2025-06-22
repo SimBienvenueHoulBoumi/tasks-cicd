@@ -168,9 +168,9 @@ pipeline {
 
         stage('🚀 Push Docker vers DockerHub') {
             steps {
-                withCredentials([string(credentialsId: 'DOCKER_HUB_TOKEN', variable: 'DOCKER_TOKEN')]) {
+                withCredentials([string(credentialsId: 'DOCKER-HUB-TOKEN', variable: 'DOCKER-HUB-TOKEN')]) {
                     sh '''
-                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+                        echo "$DOCKER-HUB-TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
                         docker tag $IMAGE_TAG $IMAGE_FULL
                         docker push $IMAGE_FULL
                         docker logout
