@@ -34,6 +34,18 @@ pipeline {
 
     stages {
 
+        stage('📋 Liste des 5 derniers builds') {
+            steps {
+                script {
+                    def job = Jenkins.instance.getItemByFullName(env.JOB_NAME)
+                    def builds = job.getBuilds().limit(5)
+                    builds.each { build ->
+                        echo "Build #${build.number} - ${build.getResult()}"
+                    }
+                }
+            }
+        }
+
         stage('📥 Checkout Git') {
             steps {
                 checkout([
