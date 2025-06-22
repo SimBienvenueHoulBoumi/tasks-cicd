@@ -12,23 +12,23 @@ pipeline {
     }
 
     environment {
-        APP_NAME            = 'tasks-cicd'
-        SONAR_PROJECT_KEY   = 'tasks-cicd'
-        GIT_REPO_URL        = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GIT_BRANCH          = '*/main'
+        APP_NAME             = 'tasks-cicd'
+        SONAR_PROJECT_KEY    = 'tasks-cicd'
+        GIT_REPO_URL         = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
+        GIT_BRANCH           = '*/main'
 
-        SONAR_HOST_URL      = 'http://host.docker.internal:9000'
-        SONARQUBE_INSTANCE  = 'sonarserver'
+        SONAR_HOST_URL       = 'http://host.docker.internal:9000'
+        SONARQUBE_INSTANCE   = 'sonarserver'
 
-        DOCKER_HUB_USER     = 'brhulla@gmail.com'
-        DOCKER_HUB_NAMESPACE= 'docker.io/brhulla'
-        IMAGE_TAG           = "${APP_NAME}:${BUILD_NUMBER}"
-        IMAGE_FULL          = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
+        DOCKER_HUB_USER      = 'brhulla@gmail.com'
+        DOCKER_HUB_NAMESPACE = 'docker.io/brhulla'
+        IMAGE_TAG            = "${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_FULL           = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
 
-        TRIVY_REPORT_DIR    = 'trivy-reports'
-        OWASP_REPORT_DIR    = 'dependency-report'
+        TRIVY_REPORT_DIR     = 'trivy-reports'
+        OWASP_REPORT_DIR     = 'dependency-report'
 
-        GITHUB_CREDENTIALS  = 'GITHUB-CREDENTIALS'
+        GITHUB_CREDENTIALS   = 'GITHUB-CREDENTIALS'
     }
 
     stages {
@@ -155,9 +155,9 @@ pipeline {
 
         stage('🚀 Push Docker vers DockerHub') {
             steps {
-                withCredentials([string(credentialsId: 'DOCKER-HUB-TOKEN', variable: 'DOCKER-HUB-TOKEN')]) {
+                withCredentials([string(credentialsId: 'DOCKER-HUB-TOKEN', variable: 'DOCKER_HUB_TOKEN')]) {
                     sh '''
-                        echo "$DOCKER-HUB-TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+                        echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
                         docker tag $IMAGE_TAG $IMAGE_FULL
                         docker push $IMAGE_FULL
                         docker logout
