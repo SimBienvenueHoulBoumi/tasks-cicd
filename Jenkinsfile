@@ -1,4 +1,5 @@
 pipeline {
+
     agent { label 'jenkins-agent' }
 
     tools {
@@ -6,38 +7,47 @@ pipeline {
         maven 'maven'
     }
 
-    environment {
-        APP_NAME           = 'tasks-cicd'
-        SONAR_PROJECT_KEY  = 'tasks-cicd'
-        GIT_REPO_URL       = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GIT_BRANCH         = '*/main'
+    options {
+        skipDefaultCheckout true
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+    }
 
-        SONAR_HOST_URL     = 'http://host.docker.internal:9000'
+
+    environment {
+        APP_NAME = 'tasks-cicd'
+        SONAR_PROJECT_KEY = 'tasks-cicd'
+        GIT_REPO_URL = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
+        GIT_BRANCH = '*/main'
+
+        SONAR_HOST_URL = 'http://host.docker.internal:9000'
         SONARQUBE_INSTANCE = 'sonarserver'
 
-        DOCKER_HUB_USER     = 'brhulla@gmail.com'
+        DOCKER_HUB_USER = 'brhulla@gmail.com'
         DOCKER_HUB_NAMESPACE = 'docker.io/brhulla'
-        IMAGE_TAG           = "${APP_NAME}:${BUILD_NUMBER}"
-        IMAGE_FULL          = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_FULL = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
 
-        TRIVY_REPORT_DIR    = 'trivy-reports'
-        OWASP_REPORT_DIR    = 'dependency-report'
+        TRIVY_REPORT_DIR = 'trivy-reports'
+        OWASP_REPORT_DIR = 'dependency-report'
 
-        GITHUB_CREDENTIALS  = 'GITHUB-CREDENTIALS'
+        GITHUB_CREDENTIALS = 'GITHUB-CREDENTIALS'
+    }
+
+    options {
+        skipDefaultCheckout true
+        timestamps()
     }
 
     stages {
 
-        stage('🧾 Affichage des 5 derniers builds') {
+        stage('📋 Liste des 5 derniers builds') {
             steps {
                 script {
-                    def url = "${env.JENKINS_URL}job/${env.JOB_NAME}/api/json?tree=builds[number,result,timestamp]{0,5}"
-                    def resp = httpRequest(url: url, httpMode: 'GET')
-                    def json = readJSON text: resp.content
-                    echo "📌 5 derniers builds :"
-                    json.builds.each { b ->
-                        def d = new Date(b.timestamp)
-                        echo "#${b.number} — ${b.result} — ${d}"
+                    def job = Jenkins.instance.getItemByFullName(env.JOB_NAME)
+                    def builds = job.getBuilds().limit(5)
+                    builds.each { build ->
+                        echo "Build #${build.number} - ${build.getResult()}"
                     }
                 }
             }
