@@ -1,7 +1,7 @@
 {
   "SchemaVersion": 2,
-  "CreatedAt": "2025-06-22T01:31:45.091023548Z",
-  "ArtifactName": "tasks-cicd:26",
+  "CreatedAt": "2025-06-22T01:40:16.86857634Z",
+  "ArtifactName": "tasks-cicd:27",
   "ArtifactType": "container_image",
   "Metadata": {
     "Size": 469906432,
@@ -9,7 +9,7 @@
       "Family": "ubuntu",
       "Name": "22.04"
     },
-    "ImageID": "sha256:2b208cbaa948bb834bdeeef39eeb6991bf18d1590a5d11ade4aba2153bc6688b",
+    "ImageID": "sha256:bfa9de49763d35e10a57686f209156860ca0a7f4acb1dcc7aab8d888d295dc23",
     "DiffIDs": [
       "sha256:1e7a4fd46befdfdb6bd98a60dada1bd3be4776c5732812530c91ee5be8e96727",
       "sha256:744449c31a692df08cc82e75a88436e22e81ee1a093943607ece854b94a7cdbe",
@@ -17,17 +17,17 @@
       "sha256:32f01b547e3432d81fa6fecad93afbcc806e1745cc6c04f03c3dfdc021d5b78e",
       "sha256:6793620e1e8cf384cb54be186de97f47d7c59252aae211dc39c76d98574d789d",
       "sha256:d9e8bd97cb3234ac5be32a0bac9c8f42476f624aa4df604136e1a8bf8733e8d6",
-      "sha256:420d8c919a5bb3f771647d172940519c33e3c2f5803e2e196e7f946c73c425cb"
+      "sha256:e904f4ce522b61a7f095d6e5e1dcc63e03b6c7b565308285d436d7393a397a91"
     ],
     "RepoTags": [
-      "tasks-cicd:26"
+      "tasks-cicd:27"
     ],
     "RepoDigests": [
-      "tasks-cicd@sha256:2b208cbaa948bb834bdeeef39eeb6991bf18d1590a5d11ade4aba2153bc6688b"
+      "tasks-cicd@sha256:bfa9de49763d35e10a57686f209156860ca0a7f4acb1dcc7aab8d888d295dc23"
     ],
     "ImageConfig": {
       "architecture": "arm64",
-      "created": "2025-06-22T01:29:47.806994716Z",
+      "created": "2025-06-22T01:38:33.956688709Z",
       "history": [
         {
           "created": "2025-04-23T14:48:05Z",
@@ -120,18 +120,18 @@
           "comment": "buildkit.dockerfile.v0"
         },
         {
-          "created": "2025-06-22T01:29:47Z",
+          "created": "2025-06-22T01:38:33Z",
           "created_by": "COPY /app/target/*.jar app.jar # buildkit",
           "comment": "buildkit.dockerfile.v0"
         },
         {
-          "created": "2025-06-22T01:29:47Z",
+          "created": "2025-06-22T01:38:33Z",
           "created_by": "EXPOSE map[8080/tcp:{}]",
           "comment": "buildkit.dockerfile.v0",
           "empty_layer": true
         },
         {
-          "created": "2025-06-22T01:29:47Z",
+          "created": "2025-06-22T01:38:33Z",
           "created_by": "ENTRYPOINT [\"java\" \"-jar\" \"app.jar\"]",
           "comment": "buildkit.dockerfile.v0",
           "empty_layer": true
@@ -147,7 +147,7 @@
           "sha256:32f01b547e3432d81fa6fecad93afbcc806e1745cc6c04f03c3dfdc021d5b78e",
           "sha256:6793620e1e8cf384cb54be186de97f47d7c59252aae211dc39c76d98574d789d",
           "sha256:d9e8bd97cb3234ac5be32a0bac9c8f42476f624aa4df604136e1a8bf8733e8d6",
-          "sha256:420d8c919a5bb3f771647d172940519c33e3c2f5803e2e196e7f946c73c425cb"
+          "sha256:e904f4ce522b61a7f095d6e5e1dcc63e03b6c7b565308285d436d7393a397a91"
         ]
       },
       "config": {
@@ -207,14 +207,14 @@
       },
       {
         "Size": 55274496,
-        "Digest": "sha256:25b121d770ab450aa59ed35b68fd61063cfdf5b0af32a8e2993336dc8d1828b2",
-        "DiffID": "sha256:420d8c919a5bb3f771647d172940519c33e3c2f5803e2e196e7f946c73c425cb"
+        "Digest": "sha256:6bc94f8659a278bfe8c3c688cd5e2adfb7bcea9aca66b42f3817b7b6ed361fd6",
+        "DiffID": "sha256:e904f4ce522b61a7f095d6e5e1dcc63e03b6c7b565308285d436d7393a397a91"
       }
     ]
   },
   "Results": [
     {
-      "Target": "tasks-cicd:26 (ubuntu 22.04)",
+      "Target": "tasks-cicd:27 (ubuntu 22.04)",
       "Class": "os-pkgs",
       "Type": "ubuntu"
     },
