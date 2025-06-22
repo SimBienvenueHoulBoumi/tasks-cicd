@@ -1,5 +1,4 @@
 pipeline {
-
     agent { label 'jenkins-agent' }
 
     tools {
@@ -7,33 +6,32 @@ pipeline {
         maven 'maven'
     }
 
-    environment {
-        APP_NAME = 'tasks-cicd'
-        SONAR_PROJECT_KEY = 'tasks-cicd'
-        GIT_REPO_URL = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GIT_BRANCH = '*/main'
-
-        SONAR_HOST_URL = 'http://host.docker.internal:9000'
-        SONARQUBE_INSTANCE = 'sonarserver'
-
-        DOCKER_HUB_USER = 'brhulla@gmail.com'
-        DOCKER_HUB_NAMESPACE = 'docker.io/brhulla'
-        IMAGE_TAG = "${APP_NAME}:${BUILD_NUMBER}"
-        IMAGE_FULL = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
-
-        TRIVY_REPORT_DIR = 'trivy-reports'
-        OWASP_REPORT_DIR = 'dependency-report'
-
-        GITHUB_CREDENTIALS = 'GITHUB-CREDENTIALS'
-    }
-
     options {
         skipDefaultCheckout true
         timestamps()
     }
 
-    stages {
+    environment {
+        APP_NAME            = 'tasks-cicd'
+        SONAR_PROJECT_KEY   = 'tasks-cicd'
+        GIT_REPO_URL        = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
+        GIT_BRANCH          = '*/main'
 
+        SONAR_HOST_URL      = 'http://host.docker.internal:9000'
+        SONARQUBE_INSTANCE  = 'sonarserver'
+
+        DOCKER_HUB_USER     = 'brhulla@gmail.com'
+        DOCKER_HUB_NAMESPACE= 'docker.io/brhulla'
+        IMAGE_TAG           = "${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_FULL          = "${DOCKER_HUB_NAMESPACE}/${APP_NAME}:${BUILD_NUMBER}"
+
+        TRIVY_REPORT_DIR    = 'trivy-reports'
+        OWASP_REPORT_DIR    = 'dependency-report'
+
+        GITHUB_CREDENTIALS  = 'GITHUB-CREDENTIALS'
+    }
+
+    stages {
 
         stage('📥 Checkout Git') {
             steps {
@@ -51,7 +49,7 @@ pipeline {
         stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
-                    if [ ! -f "mvn" ]; then
+                    if [ ! -f "./mvnw" ]; then
                         echo "➡ Génération du Maven Wrapper..."
                         mvn -N io.takari:maven:wrapper
                     fi
@@ -61,7 +59,7 @@ pipeline {
 
         stage('🔧 Compilation Maven') {
             steps {
-                sh './mvn clean compile'
+                sh './mvnw clean compile'
             }
         }
 
@@ -84,7 +82,7 @@ pipeline {
 
         stage('🔨 Build & Tests') {
             steps {
-                sh './mvn clean verify'
+                sh './mvnw clean verify'
             }
             post {
                 always {
@@ -96,7 +94,7 @@ pipeline {
         stage('🔐 Analyse sécurité OWASP') {
             steps {
                 sh """
-                    ./mvn org.owasp:dependency-check-maven:check \
+                    ./mvnw org.owasp:dependency-check-maven:check \
                         -Dformat=XML \
                         -DoutputDirectory=${OWASP_REPORT_DIR}
                 """
@@ -186,9 +184,7 @@ pipeline {
             echo '❌ Échec du pipeline.'
         }
         always {
-            node('jenkins-agent') {
-                cleanWs()
-            }
+            cleanWs()
         }
     }
 }
