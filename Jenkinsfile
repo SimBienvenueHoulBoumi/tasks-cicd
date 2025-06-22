@@ -48,18 +48,21 @@ pipeline {
         }
 
         stage('📊 Analyse SonarQube') {
+            environment {
+                SONAR_PROJECT_KEY = 'tasks-cicd'
+                SONAR_HOST_URL = 'http://host.docker.internal:9000'
+            }
             steps {
                 withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
-                    sh '''#!/bin/bash
-                    docker run --rm \
-                        -v "$PWD":/usr/src \
-                        -e SONAR_TOKEN=$SONAR_TOKEN \
-                        sonarsource/sonar-scanner-cli \
-                        -Dsonar.projectKey=tasks-cicd \
-                        -Dsonar.sources=src \
-                        -Dsonar.java.binaries=target/classes \
-                        -Dsonar.token=$SONAR_TOKEN \
-                        -Dsonar.host.url=http://host.docker.internal:9000
+                    sh '''
+                        docker run --rm \
+                            -v "$PWD":/usr/src \
+                            sonarsource/sonar-scanner-cli \
+                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                            -Dsonar.sources=src \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.token=$SONAR_TOKEN \
+                            -Dsonar.host.url=$SONAR_HOST_URL
                     '''
                 }
             }
