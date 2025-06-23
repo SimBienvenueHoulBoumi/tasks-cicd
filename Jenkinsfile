@@ -117,7 +117,13 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: "${SNYK_AUTH_TOKEN}", variable: 'SNYK_TOKEN')]) {
                     sh '''
-                        snyk auth $SNYK_TOKEN
+                        # Ajoute Snyk dans le PATH (modifie le chemin si différent chez toi)
+                        export PATH=$PATH:$JENKINS_HOME/tools/io.snyk.jenkins.tools.SnykInstallation/snyk
+
+                        # Authentification Snyk
+                        snyk auth "$SNYK_TOKEN"
+
+                        # Scan
                         snyk test \
                             --file=${SNYK_TARGET_FILE} \
                             --severity-threshold=${SNYK_SEVERITY} \
@@ -128,6 +134,7 @@ pipeline {
                 }
             }
         }
+
 
         stage('🐳 Build Docker') {
             steps {
