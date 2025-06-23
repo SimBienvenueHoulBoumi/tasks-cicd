@@ -9,8 +9,12 @@ pipeline {
 
 
     options {
-        skipDefaultCheckout true
         timestamps()
+        skipDefaultCheckout(false)// Limite le nombre de builds gardés
+        buildDiscarder(logRotator(numToKeepStr: '5'))// Timeout global du pipeline
+        timeout(time: 30, unit: 'MINUTES')// Horodatage des logs
+        timestamps()}
+        MAVEN_OPTS = "-Xmx1024m"       
     }
 
     environment {
@@ -38,7 +42,7 @@ pipeline {
         NEXUS_CREDENTIALS_ID  = 'NEXUS-CREDENTIAL'
 
         SNYK                  = 'snyk'
-        SNYK_TOKEN_ID         = 'snyk-token'
+        SNYK_TOKEN_ID         = 'SNYK-TOKEN-ID'
         SNYK_SEVERITY         = 'high'
         SNYK_TARGET_FILE      = 'pom.xml'
         SNYK_REPORT_FILE      = 'snyk_report.html'
@@ -199,6 +203,7 @@ pipeline {
                 '''
             }
         }
+
     }
 
     post {
