@@ -45,7 +45,7 @@ pipeline {
         // 📦 Nexus
         NEXUS_URL                = 'http://localhost:8081'
         NEXUS_REPO               = 'docker-hosted'
-        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'   // 🔐 Nexus login
+        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'   // 🔐 Nexus credential
 
         // 🛡️ Snyk
         SNYK_BIN                 = 'snyk'                // Nom binaire
