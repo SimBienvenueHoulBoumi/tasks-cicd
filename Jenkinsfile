@@ -16,7 +16,7 @@ pipeline {
         GIT_REPO_URL         = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
         GIT_BRANCH           = '*/main'
         SONAR_PROJECT_KEY    = 'tasks-cicd'
-        SONAR_HOST_URL       = 'http://localhost:9000'
+        SONAR_HOST_URL       = 'http://host.docker.internal:9000'
         IMAGE_TAG            = "${APP_NAME}:${BUILD_NUMBER}"
         TRIVY_REPORT_DIR     = 'trivy-reports'
         GITHUB_CREDENTIALS_ID   = 'GITHUB-CREDENTIALS'
@@ -63,23 +63,6 @@ pipeline {
             post {
                 success {
                     archiveArtifacts artifacts: '*.jar'
-                }
-            }
-        }
-
-        stage('📊 Analyse SonarQube') {
-            steps {
-                withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
-                    sh '''
-                        docker run --rm \
-                            -v "$PWD":/usr/src \
-                            sonarsource/sonar-scanner-cli \
-                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                            -Dsonar.sources=src \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.token=$SONAR_TOKEN \
-                            -Dsonar.host.url=$SONAR_HOST_URL
-                    '''
                 }
             }
         }
@@ -161,6 +144,22 @@ pipeline {
                             docker logout ${NEXUS_URL}
                         """
                     }
+                }
+            }
+        }
+
+        stage('📊 Analyse Docker Image avec SonarQube') {
+            steps {
+                withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        docker run --rm \
+                            -v "$PWD":/usr/src \
+                            sonarsource/sonar-scanner-cli \
+                            -Dsonar.host.url=http://host.docker.internal:9000 \
+                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                            -Dsonar.sources=. \
+                            -Dsonar.token=$SONAR_TOKEN
+                    '''
                 }
             }
         }
