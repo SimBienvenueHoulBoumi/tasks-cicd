@@ -13,22 +13,22 @@ pipeline {
     }
 
     environment {
-        APP_NAME                 = 'tasks-cicd'
-        GIT_REPO_URL             = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GIT_BRANCH               = '*/main'
-        GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS'
+        APP_NAME                 = 'tasks-cicd'  // Nom de l'application
+        GIT_REPO_URL             = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'  // URL du dépôt Git
+        GIT_BRANCH               = '*/main'  // Branche Git à utiliser
+        GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS'  // ID des credentials Jenkins pour GitHub
 
         SONAR_HOST_URL          = 'http://localhost:9000'  // URL de votre serveur SonarQube
         SONAR_PROJECT_KEY        = 'tasks-cicd'  // Clé du projet SonarQube
 
-        IMAGE_TAG                = "${APP_NAME}:${BUILD_NUMBER}"
-        IMAGE_FULL               = "localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_TAG                = "${APP_NAME}:${BUILD_NUMBER}"  // Tag de l'image Docker
+        IMAGE_FULL               = "localhost:8085/${APP_NAME}:${BUILD_NUMBER}"  // Nom complet de l'image Docker pour Nexus
 
-        TRIVY_IMAGE              = 'aquasec/trivy:latest'
-        TRIVY_REPORT_DIR         = 'trivy-reports'
-        TRIVY_SEVERITY           = 'CRITICAL,HIGH'
-        TRIVY_OUTPUT_FS          = '/root/reports/trivy-fs-report.json'
-        TRIVY_OUTPUT_IMAGE       = '/root/reports/trivy-image-report.json'
+        TRIVY_IMAGE              = 'aquasec/trivy:latest'  // Image Docker de Trivy
+        TRIVY_REPORT_DIR         = 'trivy-reports'  // Répertoire pour les rapports Trivy
+        TRIVY_SEVERITY           = 'CRITICAL,HIGH'  // Seuil de sévérité pour Trivy
+        TRIVY_OUTPUT_FS          = '/root/reports/trivy-fs-report.json'  // Fichier de sortie pour l'analyse du système de fichiers
+        TRIVY_OUTPUT_IMAGE       = '/root/reports/trivy-image-report.json'  // Fichier de sortie pour l'analyse de l'image Docker
 
         NEXUS_URL                = 'http://localhost:8081'  // URL de votre serveur Nexus
         NEXUS_REPO               = 'docker-hosted'  // Nom du dépôt Nexus pour Docker
