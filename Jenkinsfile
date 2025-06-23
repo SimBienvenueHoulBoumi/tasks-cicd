@@ -20,8 +20,7 @@ pipeline {
         GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS'
 
         SONAR_PROJECT_KEY        = 'tasks-cicd'
-        SONAR_HOST_URL = 'http://host.docker.internal:9000'
-
+        SONAR_HOST_URL           = 'http://host.docker.internal:9000'
         SONAR_TOKEN_CREDENTIAL_ID = 'SONARQUBE-JENKINS-TOKEN'
         SONAR_SCANNER_IMAGE      = 'sonarsource/sonar-scanner-cli'
 
@@ -40,7 +39,7 @@ pipeline {
 
         SNYK_BIN                 = 'snyk'
         SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'
-        SNYK_PLATEFORM_PROJECT = 'https://static.snyk.io/cli/latest/snyk-macos'
+        SNYK_PLATEFORM_PROJECT   = 'https://static.snyk.io/cli/latest/snyk-macos'
         SNYK_SEVERITY            = 'high'
         SNYK_TARGET_FILE         = 'pom.xml'
         SNYK_REPORT_FILE         = 'snyk_report.html'
@@ -161,7 +160,6 @@ pipeline {
             }
         }
 
-
         stage('📁 Archive Rapports Trivy') {
             steps {
                 archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/*.json", fingerprint: true
@@ -169,23 +167,15 @@ pipeline {
         }
 
         stage('📊 Analyse SonarQube') {
+            environment {
+                MAVEN_OPTS = "-DskipTests"
+            }
             steps {
-                withCredentials([string(credentialsId: "${SONAR_TOKEN_CREDENTIAL_ID}", variable: 'SONAR_TOKEN')]) {
-                    sh '''
-                        mvn clean install -DskipTests
-                        docker run --rm \
-                            -v "$PWD:/usr/src" \
-                            ${SONAR_SCANNER_IMAGE} \
-                            -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                            -Dsonar.sources=. \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.token=$SONAR_TOKEN
-                    '''
+                withSonarQubeEnv('sonarserver') {
+                    sh './mvnw clean install sonar:sonar -Dsonar.projectKey=${SONAR_PROJECT_KEY}'
                 }
             }
         }
-
 
         stage('📦 Push vers Nexus') {
             steps {
