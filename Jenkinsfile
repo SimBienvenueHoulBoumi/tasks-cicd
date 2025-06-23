@@ -176,7 +176,7 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withCredentials([string(credentialsId: 'SONAR_TOKEN_ID', variable: 'SONAR_TOKEN')]) {
+                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                     sh '''
                         mvn clean install -DskipTests
                         docker run --rm \
