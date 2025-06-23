@@ -39,6 +39,7 @@ pipeline {
 
         SNYK_BIN                 = 'snyk'
         SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'
+        SNYK_PLATEFORM_PROJECT = 'https://static.snyk.io/cli/latest/snyk-macos'
         SNYK_SEVERITY            = 'high'
         SNYK_TARGET_FILE         = 'pom.xml'
         SNYK_REPORT_FILE         = 'snyk_report.html'
@@ -103,7 +104,7 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", variable: 'SNYK_TOKEN')]) {
                     sh '''
-                        curl -Lo snyk https://static.snyk.io/cli/latest/snyk-macos
+                        curl -Lo snyk ${SNYK_PLATEFORM_PROJECT}
                         chmod +x snyk
                         ./snyk auth "$SNYK_TOKEN"
                         ./snyk test \
@@ -168,21 +169,22 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withCredentials([string(credentialsId: "${SONAR_TOKEN_CREDENTIAL_ID}", variable: "${SONAR_TOKEN_CREDENTIAL_ID}")]) {
+                withCredentials([string(credentialsId: "${SONAR_TOKEN_CREDENTIAL_ID}", variable: 'SONAR_TOKEN')]) {
                     sh '''
                         mvn clean install -DskipTests
                         docker run --rm \
-                        -v "$PWD:/usr/src" \
-                        ${SONAR_SCANNER_IMAGE} \
-                        -Dsonar.host.url=${SONAR_HOST_URL} \
-                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                        -Dsonar.sources=. \
-                        -Dsonar.java.binaries=target/classes \
-                        -Dsonar.token=$SONAR_TOKEN_CREDENTIAL_ID
+                            -v "$PWD:/usr/src" \
+                            ${SONAR_SCANNER_IMAGE} \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.sources=. \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.token=$SONAR_TOKEN
                     '''
                 }
             }
         }
+
 
         stage('📦 Push vers Nexus') {
             steps {
