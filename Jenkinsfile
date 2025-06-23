@@ -49,7 +49,7 @@ pipeline {
 
         // 🛡️ Snyk (analyse vulnérabilités)
         SNYK                  = 'snyk'
-        SNYK_AUTH_TOKEN       = 'SNYK_AUTH_TOKEN'  // ⚠️ Nom du secret Jenkins (pas la valeur brute)
+        SNYK_AUTH_TOKEN       = 'SNYK_AUTH_TOKEN'
         SNYK_SEVERITY         = 'high'
         SNYK_TARGET_FILE      = 'pom.xml'
         SNYK_REPORT_FILE      = 'snyk_report.html'
@@ -176,15 +176,17 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withCredentials([string(credentialsId: "${SONAR_TOKEN_ID}", variable: 'SONAR_TOKEN')]) {
+                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                     sh '''
+                        mvn clean install -DskipTests
                         docker run --rm \
-                            -v "$PWD":/usr/src \
-                            ${SONAR_SCANNER_IMAGE} \
-                            -Dsonar.host.url=$SONAR_HOST_URL \
-                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                            -Dsonar.sources=. \
-                            -Dsonar.token=$SONAR_TOKEN
+                        -v "$PWD:/usr/src" \
+                        sonarsource/sonar-scanner-cli \
+                        -Dsonar.host.url=http://host.docker.internal:9000 \
+                        -Dsonar.projectKey=tasks-cicd \
+                        -Dsonar.sources=. \
+                        -Dsonar.java.binaries=target/classes \
+                        -Dsonar.token=$SONAR_TOKEN
                     '''
                 }
             }
