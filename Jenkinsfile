@@ -13,7 +13,7 @@ pipeline {
         skipDefaultCheckout(false)// Limite le nombre de builds gardés
         buildDiscarder(logRotator(numToKeepStr: '5'))// Timeout global du pipeline
         timeout(time: 30, unit: 'MINUTES')// Horodatage des logs
-        timestamps()}
+        timestamps()
         MAVEN_OPTS = "-Xmx1024m"       
     }
 
@@ -217,4 +217,4 @@ pipeline {
             cleanWs()
         }
     }
-}
+ }
