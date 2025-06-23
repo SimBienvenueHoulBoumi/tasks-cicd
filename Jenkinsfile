@@ -21,7 +21,7 @@ pipeline {
 
         // Clé projet SonarQube
         SONAR_PROJECT_KEY    = 'tasks-cicd'
-        SONAR_HOST_URL       = 'http://host.docker.internal:9000'
+        SONAR_HOST_URL       = 'http://localhost:9000'
 
         // Nom de l'image Docker locale (tag temporaire)
         IMAGE_TAG            = "${APP_NAME}:${BUILD_NUMBER}"
@@ -29,13 +29,20 @@ pipeline {
         // Dossiers de rapports
         TRIVY_REPORT_DIR     = 'trivy-reports'
 
-        // Credentials Jenkins
-        GITHUB_CREDENTIALS   = 'GITHUB-CREDENTIALS'
-        NEXUS_CREDENTIALS    = 'NEXUS-CREDENTIAL'
+        // Credentials IDs
+        GITHUB_CREDENTIALS_ID   = 'GITHUB-CREDENTIALS'
+
+        NEXUS_URL = 'http://localhost:8081'
+        NEXUS_REPO = 'docker-hosted'
+        NEXUS_CREDENTIALS_ID    = 'NEXUS-CREDENTIAL'
+
+        SONARSERVER = 'SONARSERVER'         // 🔍 Nom du serveur SonarQube configuré dans Jenkins
+        SONARSCANNER = 'SONARSCANNER'       // 🔍 Scanner CLI SonarQube configuré dans Jenkins
+
+        SNYK = 'snyk'                       // 🛡️ Nom de l'installation Snyk (scanner de vulnérabilités)
     }
 
     stages {
-
         stage('📥 Checkout Git') {
             steps {
                 checkout([
@@ -43,7 +50,7 @@ pipeline {
                     branches: [[name: "${GIT_BRANCH}"]],
                     userRemoteConfigs: [[
                         url: "${GIT_REPO_URL}",
-                        credentialsId: "${GITHUB_CREDENTIALS}"
+                        credentialsId: "${GITHUB_CREDENTIALS_ID}"
                     ]]
                 ])
             }
@@ -52,9 +59,11 @@ pipeline {
         stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
-                    if [ ! -f "./mvnw" ]; then
-                        echo "➡ Génération du Maven Wrapper..."
+                    if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
+                        echo "➡ Maven Wrapper manquant. Génération..."
                         mvn -N io.takari:maven:wrapper
+                    else
+                        echo "✅ Maven Wrapper déjà présent."
                     fi
                 '''
             }
@@ -63,6 +72,12 @@ pipeline {
         stage('🔧 Compilation Maven') {
             steps {
                 sh './mvnw clean compile'
+            }
+            post {
+                success {
+                    echo "✅ Build réussi - Archivage des artefacts..."
+                    archiveArtifacts artifacts: 'target/*.jar' // 📦 Sauvegarde du fichier .jar généré
+                }
             }
         }
 
@@ -89,9 +104,48 @@ pipeline {
             }
             post {
                 always {
+                    echo "✅ Build réussi - Archivage des artefacts..."
                     junit 'target/surefire-reports/*.xml'
                 }
             }
+        }
+
+        stage('🧹 Checkstyle Analysis') {
+            steps {
+                sh './mvnw checkstyle:checkstyle'
+            }
+        }
+
+        stage('📊 SonarQube Analysis') {
+            environment {
+                scannerHome = tool "${SONARSCANNER}" // 🛠️ Récupère le chemin d’installation du scanner
+            }
+            withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
+                sh '''
+                    docker run --rm \
+                        -v "$PWD":/usr/src \
+                        sonarsource/sonar-scanner-cli \
+                        -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                        -Dsonar.sources=src \
+                        -Dsonar.java.binaries=target/classes \
+                        -Dsonar.token=$SONAR_TOKEN \
+                        -Dsonar.host.url=$SONAR_HOST_URL
+                '''
+           }
+        }
+
+        stage('Snyk Dependency Scan') {
+            steps {
+                snykSecurity (
+                    severity: 'high',                         // 🚨 Niveau de menace minimum : high, medium, low
+                    snykInstallation: "${SNYK}",              // 🔧 Nom défini dans Jenkins pour Snyk CLI
+                    snykTokenId: 'snyk-token',                // 🔑 ID de la clé d'API Snyk (stockée dans Jenkins Credentials)
+                    targetFile: 'pom.xml',                    // 📄 Fichier principal pour Maven
+                    monitorProjectOnBuild: true,              // 📡 Envoi automatique des résultats sur Snyk.io
+                    failOnIssues: true,                       // ❌ Échoue le pipeline en cas de vulnérabilités
+                    additionalArguments: '--report --format=html --report-file=snyk_report.html' // 📃 Génère un rapport HTML
+                ) 
+            } 
         }
 
         stage('🐳 Build Docker Image') {
@@ -124,38 +178,35 @@ pipeline {
 
        stage('📦 Push Docker vers Nexus') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: "${NEXUS_CREDENTIALS}",
-                    usernameVariable: 'NEXUS_USER',
-                    passwordVariable: 'NEXUS_PASS'
-                )]) {
-                    script {
-                        def NEXUS_REPO_HOST = "host.docker.internal:8081" // localhost dans Jenkins = conteneur, donc pas Nexus
-                        def NEXUS_REPO_NAME = "docker-hosted"
-                        def NEXUS_IMAGE     = "${NEXUS_REPO_HOST}/${APP_NAME}:${BUILD_NUMBER}"
+                echo 'Nexus Docker Repository Login'
+                script{
+                    def NEXUS_REPO_URL = "${NEXUS_URL}/repository/${NEXUS_REPO}"
+                    def NEXUS_IMAGE = "http:localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
 
-                        echo "✅ Push image vers Nexus : ${NEXUS_IMAGE}"
+                    echo "🔐 Login au Nexus Docker Registry : ${NEXUS_IMAGE}"
 
-                        // Pas d'interpolation directe de secrets
-                        sh """
-                            echo \$NEXUS_PASS | docker login ${NEXUS_REPO_HOST} -u \$NEXUS_USER --password-stdin
-                            docker tag ${IMAGE_TAG} ${NEXUS_IMAGE}
-                            docker push ${NEXUS_IMAGE}
-                            docker logout ${NEXUS_REPO_HOST}
-                        """
-                    }
+                    withCredentials([usernamePassword(
+                        credentialsId: "${NEXUS_CREDENTIALS_ID}",
+                        usernameVariable: 'USER',
+                        passwordVariable: 'PASS'
+                    )]) 
+                   
                 }
             }
-        }
-
-
-        stage('🧹 Nettoyage') {
             steps {
-                sh '''
-                    docker rmi ${IMAGE_TAG} || true
-                    docker system prune -f
-                '''
+                echo 'Pushing Im to docker hub'
+                sh 'docker push $NEXUS_DOCKER_REPO/demo-rest-api:$BUILD_NUMBER'
             }
+        }
+    }
+
+
+    stage('🧹 Nettoyage') {
+        steps {
+            sh '''
+                docker rmi ${IMAGE_TAG} || true
+                docker system prune -f
+            '''
         }
     }
 
@@ -170,4 +221,5 @@ pipeline {
             cleanWs()
         }
     }
-}
+    
+ }
