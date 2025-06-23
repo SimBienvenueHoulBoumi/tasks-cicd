@@ -1,63 +1,50 @@
 pipeline {
-
-    // 🧠 Agent exécutant les jobs
     agent { label 'jenkins-agent' }
 
-    // 🛠️ Outils déclarés dans Jenkins (Tools Global Configuration)
     tools {
-        jdk 'jdk'              // Java Development Kit préinstallé
-        maven 'maven'          // Maven CLI préinstallé (mvnw utilisé aussi)
+        jdk 'jdk'
+        maven 'maven'
     }
 
-    // ⚙️ Options globales du pipeline
     options {
-        timestamps()                          // ⏱️ Logs horodatés
-        skipDefaultCheckout(false)            // 📥 Active le checkout implicite
-        buildDiscarder(logRotator(numToKeepStr: '5')) // ♻️ Garde les 5 derniers builds
-        timeout(time: 30, unit: 'MINUTES')    // ⏳ Timeout pipeline = 30 min
+        timestamps()
+        skipDefaultCheckout(false)
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+        timeout(time: 30, unit: 'MINUTES')
     }
 
-    // 🌍 Variables d’environnement globales
     environment {
-        // 🔧 Projet Git
         APP_NAME                 = 'tasks-cicd'
         GIT_REPO_URL             = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
         GIT_BRANCH               = '*/main'
-        GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS' // 🔐 SSH key GitHub
+        GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS'
 
-        // 📊 SonarQube
         SONAR_PROJECT_KEY        = 'tasks-cicd'
         SONAR_HOST_URL           = 'http://host.docker.internal:9000'
-        SONAR_TOKEN_CREDENTIAL_ID = 'SONAR-TOKEN'       // 🔐 SonarQube token
+        SONAR_TOKEN_CREDENTIAL_ID = 'SONARQUBE-JENKINS-TOKEN'
         SONAR_SCANNER_IMAGE      = 'sonarsource/sonar-scanner-cli'
 
-        // 🐳 Docker
         IMAGE_TAG                = "${APP_NAME}:${BUILD_NUMBER}"
         IMAGE_FULL               = "localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
 
-        // 🔍 Trivy
         TRIVY_IMAGE              = 'aquasec/trivy:latest'
         TRIVY_REPORT_DIR         = 'trivy-reports'
         TRIVY_SEVERITY           = 'CRITICAL,HIGH'
         TRIVY_OUTPUT_FS          = '/root/reports/trivy-fs-report.json'
         TRIVY_OUTPUT_IMAGE       = '/root/reports/trivy-image-report.json'
 
-        // 📦 Nexus
         NEXUS_URL                = 'http://localhost:8081'
         NEXUS_REPO               = 'docker-hosted'
-        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'   // 🔐 Nexus credential
+        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'
 
-        // 🛡️ Snyk
-        SNYK_BIN                 = 'snyk'                // Nom binaire
-        SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'     // 🔐 Snyk token
+        SNYK_BIN                 = 'snyk'
+        SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'
         SNYK_SEVERITY            = 'high'
         SNYK_TARGET_FILE         = 'pom.xml'
         SNYK_REPORT_FILE         = 'snyk_report.html'
     }
 
-    // 🧱 Déroulement des étapes
     stages {
-
         stage('📥 Checkout Git') {
             steps {
                 checkout([
@@ -84,13 +71,13 @@ pipeline {
             }
         }
 
-        stage('🔧 Compilation Maven') {
+        stage('🔧 Compilation + Package') {
             steps {
-                sh './mvnw clean compile'
+                sh './mvnw clean package'
             }
             post {
                 success {
-                    archiveArtifacts artifacts: '*.jar'
+                    archiveArtifacts artifacts: 'target/*.jar'
                 }
             }
         }
@@ -114,22 +101,11 @@ pipeline {
 
         stage('🛡️ Analyse Snyk') {
             steps {
-                // 🛡️ Authentification Snyk via token injecté depuis Credential de type Secret text
-                withCredentials([
-                    string(
-                        credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", // 🔐 Token Snyk stocké dans Jenkins
-                        variable: 'SNYK_TOKEN'
-                    )
-                ]) {
+                withCredentials([string(credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", variable: 'SNYK_TOKEN')]) {
                     sh '''
-                        echo "🔐 Téléchargement Snyk CLI"
                         curl -Lo snyk https://static.snyk.io/cli/latest/snyk-macos
                         chmod +x snyk
-
-                        echo "✅ Authentification..."
                         ./snyk auth "$SNYK_TOKEN"
-
-                        echo "🔍 Analyse des dépendances (niveau ${SNYK_SEVERITY})..."
                         ./snyk test \
                             --file=${SNYK_TARGET_FILE} \
                             --severity-threshold=${SNYK_SEVERITY} \
@@ -140,7 +116,6 @@ pipeline {
                 }
             }
         }
-
 
         stage('🐳 Build Docker') {
             steps {
@@ -187,7 +162,7 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withCredentials([string(credentialsId: "${SONAR_TOKEN_CREDENTIAL_ID}", variable: 'SONAR_TOKEN_CREDENTIAL_ID')]) {
+                withCredentials([string(credentialsId: "${SONAR_TOKEN_CREDENTIAL_ID}", variable: "${SONAR_TOKEN_CREDENTIAL_ID}")]) {
                     sh '''
                         mvn clean install -DskipTests
                         docker run --rm \
@@ -230,7 +205,6 @@ pipeline {
         }
     }
 
-    // 🔚 Bloc post-exécution
     post {
         success {
             echo '✅ Pipeline terminé avec succès.'
@@ -239,7 +213,7 @@ pipeline {
             echo '❌ Échec du pipeline.'
         }
         always {
-            cleanWs() // 🧽 Nettoyage du workspace Jenkins
+            cleanWs()
         }
     }
 }
