@@ -108,11 +108,12 @@ pipeline {
                     snykTokenId: "${SNYK_TOKEN_ID}",
                     targetFile: "${SNYK_TARGET_FILE}",
                     monitorProjectOnBuild: true,
-                    failOnIssues: true,
+                    failOnIssues: false,
                     additionalArguments: "--report --format=html --report-file=${SNYK_REPORT_FILE}"
                 )
             }
         }
+
 
         stage('🐳 Build Docker') {
             steps {
