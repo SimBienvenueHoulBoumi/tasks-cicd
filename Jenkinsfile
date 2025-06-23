@@ -8,11 +8,10 @@ pipeline {
     }
 
     options {
-        timestamps()
-        skipDefaultCheckout(false)// Limite le nombre de builds gardés
-        buildDiscarder(logRotator(numToKeepStr: '5'))// Timeout global du pipeline
-        timeout(time: 30, unit: 'MINUTES')// Horodatage des logs
-        MAVEN_OPTS = "-Xmx1024m"       
+        timestamps() // Horodatage des logs
+        skipDefaultCheckout(false)
+        buildDiscarder(logRotator(numToKeepStr: '5')) // Garder les 5 derniers builds
+        timeout(time: 30, unit: 'MINUTES') // Timeout global
     }
 
     environment {
