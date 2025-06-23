@@ -114,11 +114,22 @@ pipeline {
 
         stage('🛡️ Analyse Snyk') {
             steps {
-                withCredentials([string(credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", variable: 'SNYK_TOKEN')]) {
+                // 🛡️ Authentification Snyk via token injecté depuis Credential de type Secret text
+                withCredentials([
+                    string(
+                        credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", // 🔐 Token Snyk stocké dans Jenkins
+                        variable: 'SNYK_TOKEN'
+                    )
+                ]) {
                     sh '''
+                        echo "🔐 Téléchargement Snyk CLI"
                         curl -Lo snyk https://static.snyk.io/cli/latest/snyk-macos
                         chmod +x snyk
+
+                        echo "✅ Authentification..."
                         ./snyk auth "$SNYK_TOKEN"
+
+                        echo "🔍 Analyse des dépendances (niveau ${SNYK_SEVERITY})..."
                         ./snyk test \
                             --file=${SNYK_TARGET_FILE} \
                             --severity-threshold=${SNYK_SEVERITY} \
@@ -129,6 +140,7 @@ pipeline {
                 }
             }
         }
+
 
         stage('🐳 Build Docker') {
             steps {
@@ -175,7 +187,7 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withCredentials([string(credentialsId: "${SONAR_TOKEN_CREDENTIAL_ID}", variable: 'SONAR_TOKEN')]) {
+                withCredentials([string(credentialsId: "${SONAR_TOKEN_CREDENTIAL_ID}", variable: 'SONAR_TOKEN_CREDENTIAL_ID')]) {
                     sh '''
                         mvn clean install -DskipTests
                         docker run --rm \
@@ -185,7 +197,7 @@ pipeline {
                         -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                         -Dsonar.sources=. \
                         -Dsonar.java.binaries=target/classes \
-                        -Dsonar.token=$SONAR_TOKEN
+                        -Dsonar.token=$SONAR_TOKEN_CREDENTIAL_ID
                     '''
                 }
             }
