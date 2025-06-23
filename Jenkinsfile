@@ -5,7 +5,6 @@ pipeline {
         jdk 'jdk'
         maven 'maven'
     }
-
     options {
         timestamps()
         skipDefaultCheckout(false)
@@ -19,11 +18,11 @@ pipeline {
         GIT_BRANCH               = '*/main'
         GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS'
 
-        SONAR_PROJECT_KEY        = 'tasks-cicd'
-        SONAR_HOST_URL           = 'http://172.20.10.3:9000'  // IP de l'hôte SonarQube
+        SONAR_PROJECT_KEY        = 'tasks-cicd'  // Clé du projet SonarQube
+        SONAR_HOST_URL = 'http://sonarqube:9000' // IP de l'hôte SonarQube
 
-        SONAR_TOKEN_CREDENTIAL_ID = 'SONARQUBE-JENKINS-TOKEN'
-        SONAR_SCANNER_IMAGE      = 'sonarsource/sonar-scanner-cli'
+        SONAR_TOKEN_CREDENTIAL_ID = 'SONARQUBE-JENKINS-TOKEN'  // ID du token Jenkins pour SonarQube
+        SONAR_SCANNER_IMAGE      = 'sonarsource/sonar-scanner-cli'  // Image Docker pour SonarQube Scanner
 
         IMAGE_TAG                = "${APP_NAME}:${BUILD_NUMBER}"
         IMAGE_FULL               = "localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
@@ -34,16 +33,16 @@ pipeline {
         TRIVY_OUTPUT_FS          = '/root/reports/trivy-fs-report.json'
         TRIVY_OUTPUT_IMAGE       = '/root/reports/trivy-image-report.json'
 
-        NEXUS_URL                = 'http://localhost:8081'
-        NEXUS_REPO               = 'docker-hosted'
-        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'
+        NEXUS_URL                = 'http://localhost:8081'  // URL de votre serveur Nexus
+        NEXUS_REPO               = 'docker-hosted'  // Nom du dépôt Nexus pour Docker
+        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'  // ID des credentials Jenkins pour Nexus
 
-        SNYK_BIN                 = 'snyk'
-        SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'
-        SNYK_PLATEFORM_PROJECT   = 'https://static.snyk.io/cli/latest/snyk-macos'
-        SNYK_SEVERITY            = 'high'
-        SNYK_TARGET_FILE         = 'pom.xml'
-        SNYK_REPORT_FILE         = 'snyk_report.html'
+        SNYK_BIN                 = 'snyk'  // Nom du binaire Snyk
+        SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'  // ID du token Jenkins pour Snyk
+        SNYK_PLATEFORM_PROJECT   = 'https://static.snyk.io/cli/latest/snyk-macos'  // URL du binaire Snyk pour macOS
+        SNYK_SEVERITY            = 'high'  // Seuil de sévérité pour Snyk
+        SNYK_TARGET_FILE         = 'pom.xml'  // Fichier cible pour l'analyse Snyk
+        SNYK_REPORT_FILE         = 'snyk_report.html'  // Nom du fichier de rapport Snyk
     }
 
     stages {
