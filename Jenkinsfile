@@ -20,7 +20,8 @@ pipeline {
         GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS'
 
         SONAR_PROJECT_KEY        = 'tasks-cicd'
-        SONAR_HOST_URL           = 'http://localhost:9000'
+        SONAR_HOST_URL = 'http://host.docker.internal:9000'
+
         SONAR_TOKEN_CREDENTIAL_ID = 'SONARQUBE-JENKINS-TOKEN'
         SONAR_SCANNER_IMAGE      = 'sonarsource/sonar-scanner-cli'
 
