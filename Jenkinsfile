@@ -143,9 +143,9 @@ pipeline {
             steps {
                 sh '''
                     echo "🧹 Nettoyage du cache Java de Trivy (évite les erreurs de type 'context deadline exceeded')"
-                    docker run --rm ${TRIVY_IMAGE} --reset
+                    docker run --rm ${TRIVY_IMAGE} clean --java-db
 
-                    echo "🔍 Analyse de l’image Docker avec Trivy (failles CRITICAL et HIGH uniquement)"
+                    echo "🔍 Lancement de l’analyse de l’image Docker avec Trivy"
                     docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
                         -v $(pwd)/${TRIVY_REPORT_DIR}:/root/reports \
