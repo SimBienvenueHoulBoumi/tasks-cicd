@@ -1,54 +1,62 @@
 pipeline {
+
+    // 🧠 Agent exécutant les jobs
     agent { label 'jenkins-agent' }
 
+    // 🛠️ Outils déclarés dans Jenkins (Tools Global Configuration)
     tools {
-        jdk 'jdk'
-        maven 'maven'
-        snyk 'snyk'
+        jdk 'jdk'              // Java Development Kit préinstallé
+        maven 'maven'          // Maven CLI (Wrapper utilisé dans le code aussi)
+        snyk 'snyk'            // Snyk CLI installé via Jenkins Tools (nom exact)
     }
 
+    // ⚙️ Options globales du pipeline
     options {
-        timestamps() // Horodatage des logs
-        skipDefaultCheckout(false)
-        buildDiscarder(logRotator(numToKeepStr: '5')) // Garder les 5 derniers builds
-        timeout(time: 30, unit: 'MINUTES') // Timeout global
+        timestamps() // ⏱️ Ajoute les timestamps dans les logs pour la traçabilité
+        skipDefaultCheckout(false) // 📥 Active le checkout implicite
+        buildDiscarder(logRotator(numToKeepStr: '5')) // ♻️ Conserve les 5 derniers builds
+        timeout(time: 30, unit: 'MINUTES') // ⏳ Stoppe le pipeline s’il dépasse 30 min
     }
 
+    // 🌍 Variables d’environnement globales
     environment {
+        // 🔧 Git & Projet
         APP_NAME              = 'tasks-cicd'
         GIT_REPO_URL          = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
         GIT_BRANCH            = '*/main'
         GITHUB_CREDENTIALS_ID = 'GITHUB-CREDENTIALS'
 
+        // 📊 SonarQube
         SONAR_PROJECT_KEY     = 'tasks-cicd'
         SONAR_HOST_URL        = 'http://host.docker.internal:9000'
         SONAR_TOKEN_ID        = 'SONAR-TOKEN'
         SONAR_SCANNER_IMAGE   = 'sonarsource/sonar-scanner-cli'
 
+        // 🐳 Docker
         IMAGE_TAG             = "${APP_NAME}:${BUILD_NUMBER}"
         IMAGE_FULL            = "localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
 
+        // 🔍 Trivy (scan sécurité)
         TRIVY_IMAGE           = 'aquasec/trivy:latest'
         TRIVY_REPORT_DIR      = 'trivy-reports'
         TRIVY_SEVERITY        = 'CRITICAL,HIGH'
         TRIVY_OUTPUT_FS       = '/root/reports/trivy-fs-report.json'
         TRIVY_OUTPUT_IMAGE    = '/root/reports/trivy-image-report.json'
 
+        // 📦 Nexus (registry privé)
         NEXUS_URL             = 'http://localhost:8081'
         NEXUS_REPO            = 'docker-hosted'
         NEXUS_CREDENTIALS_ID  = 'NEXUS-CREDENTIAL'
 
+        // 🛡️ Snyk (analyse vulnérabilités)
         SNYK                  = 'snyk'
-        SNYK_AUTH_TOKEN       = 'SNYK_AUTH_TOKEN'
+        SNYK_AUTH_TOKEN       = 'SNYK_AUTH_TOKEN'  // ⚠️ Nom du secret Jenkins (pas la valeur brute)
         SNYK_SEVERITY         = 'high'
         SNYK_TARGET_FILE      = 'pom.xml'
         SNYK_REPORT_FILE      = 'snyk_report.html'
     }
 
-    snykSecurity(
-        snykTokenId: "${SNYK_AUTH_TOKEN}",
-    )
-
+    // 🧱 Déroulé des étapes
     stages {
 
         stage('📥 Checkout Git') {
@@ -68,10 +76,10 @@ pipeline {
             steps {
                 sh '''
                     if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
-                        echo "➡ Maven Wrapper missing. Generating..."
+                        echo "➡ Maven Wrapper manquant. Création..."
                         mvn -N io.takari:maven:wrapper
                     else
-                        echo "✅ Maven Wrapper already present."
+                        echo "✅ Maven Wrapper déjà présent."
                     fi
                 '''
             }
@@ -107,18 +115,19 @@ pipeline {
 
         stage('🛡️ Analyse Snyk') {
             steps {
-                snykSecurity (
-                    severity: "${SNYK_SEVERITY}",
-                    snykInstallation: "${SNYK}",
-                    snykTokenId: "${SNYK_AUTH_TOKEN}",
-                    targetFile: "${SNYK_TARGET_FILE}",
-                    monitorProjectOnBuild: true,
-                    failOnIssues: false,
-                    additionalArguments: "--report --format=html --report-file=${SNYK_REPORT_FILE}"
-                )
+                withCredentials([string(credentialsId: "${SNYK_AUTH_TOKEN}", variable: 'SNYK_TOKEN')]) {
+                    sh '''
+                        snyk auth $SNYK_TOKEN
+                        snyk test \
+                            --file=${SNYK_TARGET_FILE} \
+                            --severity-threshold=${SNYK_SEVERITY} \
+                            --report \
+                            --format=html \
+                            --report-file=${SNYK_REPORT_FILE} || true
+                    '''
+                }
             }
         }
-
 
         stage('🐳 Build Docker') {
             steps {
@@ -204,9 +213,9 @@ pipeline {
                 '''
             }
         }
-
     }
 
+    // 🔚 Bloc post-traitement du pipeline
     post {
         success {
             echo '✅ Pipeline terminé avec succès.'
@@ -215,7 +224,7 @@ pipeline {
             echo '❌ Échec du pipeline.'
         }
         always {
-            cleanWs()
+            cleanWs() // 🧽 Nettoyage du workspace Jenkins à la fin
         }
     }
- }
+}
