@@ -173,13 +173,13 @@ pipeline {
                     withSonarQubeEnv('sonarserver') {
                         // Injection sécurisée du token via Jenkins Credentials
                         withCredentials([string(credentialsId: "${SONAR_TOKEN_CREDENTIAL_ID}", variable: 'SONAR_TOKEN')]) {
-                            sh '''
+                            sh """
                                 echo "🔍 Lancement de l'analyse SonarQube avec Maven"
                                 ./mvnw clean install sonar:sonar \
                                   -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                                   -Dsonar.host.url=${SONAR_HOST_URL} \
                                   -Dsonar.token=${SONAR_TOKEN}
-                            '''
+                            """
                         }
                     }
                 }
