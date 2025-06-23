@@ -12,22 +12,34 @@ pipeline {
     }
 
     environment {
-        APP_NAME             = 'tasks-cicd'
-        GIT_REPO_URL         = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GIT_BRANCH           = '*/main'
-        SONAR_PROJECT_KEY    = 'tasks-cicd'
-        SONAR_HOST_URL       = 'http://host.docker.internal:9000'
-        IMAGE_TAG            = "${APP_NAME}:${BUILD_NUMBER}"
-        TRIVY_REPORT_DIR     = 'trivy-reports'
-        GITHUB_CREDENTIALS_ID   = 'GITHUB-CREDENTIALS'
-        NEXUS_URL = 'http://localhost:8081'
-        NEXUS_REPO = 'docker-hosted'
-        NEXUS_CREDENTIALS_ID = 'NEXUS-CREDENTIAL'
-        SONARSERVER = 'SONARSERVER'
-        SONARSCANNER = 'SONARSCANNER'
-        SNYK = 'snyk'
-        SNYK_TOKEN = 'snyk-token'
-        SNYK_SEVERITY = 'high'
+        APP_NAME              = 'tasks-cicd'
+        GIT_REPO_URL          = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
+        GIT_BRANCH            = '*/main'
+        GITHUB_CREDENTIALS_ID = 'GITHUB-CREDENTIALS'
+
+        SONAR_PROJECT_KEY     = 'tasks-cicd'
+        SONAR_HOST_URL        = 'http://host.docker.internal:9000'
+        SONAR_TOKEN_ID        = 'SONAR-TOKEN'
+        SONAR_SCANNER_IMAGE   = 'sonarsource/sonar-scanner-cli'
+
+        IMAGE_TAG             = "${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_FULL            = "localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
+
+        TRIVY_IMAGE           = 'aquasec/trivy:latest'
+        TRIVY_REPORT_DIR      = 'trivy-reports'
+        TRIVY_SEVERITY        = 'CRITICAL,HIGH'
+        TRIVY_OUTPUT_FS       = '/root/reports/trivy-fs-report.json'
+        TRIVY_OUTPUT_IMAGE    = '/root/reports/trivy-image-report.json'
+
+        NEXUS_URL             = 'http://localhost:8081'
+        NEXUS_REPO            = 'docker-hosted'
+        NEXUS_CREDENTIALS_ID  = 'NEXUS-CREDENTIAL'
+
+        SNYK                  = 'snyk'
+        SNYK_TOKEN_ID         = 'snyk-token'
+        SNYK_SEVERITY         = 'high'
+        SNYK_TARGET_FILE      = 'pom.xml'
+        SNYK_REPORT_FILE      = 'snyk_report.html'
     }
 
     stages {
@@ -49,10 +61,10 @@ pipeline {
             steps {
                 sh '''
                     if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
-                        echo "➡ Maven Wrapper manquant. Génération..."
+                        echo "➡ Maven Wrapper missing. Generating..."
                         mvn -N io.takari:maven:wrapper
                     else
-                        echo "✅ Maven Wrapper déjà présent."
+                        echo "✅ Maven Wrapper already present."
                     fi
                 '''
             }
@@ -80,77 +92,77 @@ pipeline {
             }
         }
 
-        stage('🧹 Checkstyle Analysis') {
+        stage('🧹 Checkstyle') {
             steps {
                 sh './mvnw checkstyle:checkstyle'
             }
         }
 
-        stage('🛡️ Snyk Dependency Scan') {
+        stage('🛡️ Analyse Snyk') {
             steps {
                 snykSecurity (
                     severity: "${SNYK_SEVERITY}",
                     snykInstallation: "${SNYK}",
-                    snykTokenId: "${SNYK_TOKEN}",
-                    targetFile: 'pom.xml',
+                    snykTokenId: "${SNYK_TOKEN_ID}",
+                    targetFile: "${SNYK_TARGET_FILE}",
                     monitorProjectOnBuild: true,
                     failOnIssues: true,
-                    additionalArguments: '--report --format=html --report-file=snyk_report.html'
+                    additionalArguments: "--report --format=html --report-file=${SNYK_REPORT_FILE}"
                 )
             }
         }
 
-        stage('🐳 Build Docker Image') {
+        stage('🐳 Build Docker') {
             steps {
                 sh 'docker build -t $IMAGE_TAG .'
             }
         }
 
-        stage('🔍 Trivy – Analyse code source (fs)') {
+        stage('🔍 Trivy - Analyse Code') {
             steps {
                 sh '''
-                    mkdir -p trivy-reports
+                    mkdir -p ${TRIVY_REPORT_DIR}
                     docker run --rm \
                         -v $(pwd):/project \
-                        -v $(pwd)/trivy-reports:/root/reports \
-                        aquasec/trivy:latest fs /project \
+                        -v $(pwd)/${TRIVY_REPORT_DIR}:/root/reports \
+                        ${TRIVY_IMAGE} fs /project \
                         --exit-code 0 \
-                        --severity CRITICAL,HIGH \
+                        --severity ${TRIVY_SEVERITY} \
                         --format json \
-                        --output /root/reports/trivy-fs-report.json
+                        --output ${TRIVY_OUTPUT_FS}
                 '''
             }
         }
 
-        stage('🔍 Trivy – Analyse image Docker') {
+        stage('🔍 Trivy - Analyse Image') {
             steps {
-                sh """
+                sh '''
                     docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
-                        -v $(pwd)/trivy-reports:/root/reports \
-                        aquasec/trivy:latest image ${IMAGE_TAG} \
+                        -v $(pwd)/${TRIVY_REPORT_DIR}:/root/reports \
+                        ${TRIVY_IMAGE} image $IMAGE_TAG \
                         --exit-code 0 \
-                        --severity CRITICAL,HIGH \
+                        --severity ${TRIVY_SEVERITY} \
                         --format json \
-                        --output /root/reports/trivy-image-report.json
-                """
+                        --output ${TRIVY_OUTPUT_IMAGE}
+                '''
             }
         }
 
-        stage('📁 Archive Trivy Reports') {
+        stage('📁 Archive Rapports Trivy') {
             steps {
-                archiveArtifacts artifacts: 'trivy-reports/*.json', fingerprint: true
+                archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/*.json", fingerprint: true
             }
         }
 
-        stage('📊 Analyse Docker Image avec SonarQube') {
+        stage('📊 Analyse SonarQube') {
             steps {
-                withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
+                withCredentials([string(credentialsId: "${SONAR_TOKEN_ID}", variable: 'SONAR_TOKEN')]) {
                     sh '''
                         docker run --rm \
                             -v "$PWD":/usr/src \
-                            sonarsource/sonar-scanner-cli \
-                            -Dsonar.host.url=http://host.docker.internal:9000 \
+                            ${SONAR_SCANNER_IMAGE} \
+                            -Dsonar.host.url=$SONAR_HOST_URL \
                             -Dsonar.projectKey=$SONAR_PROJECT_KEY \
                             -Dsonar.sources=. \
                             -Dsonar.token=$SONAR_TOKEN
@@ -159,19 +171,19 @@ pipeline {
             }
         }
 
-       stage('📦 Push Docker vers Nexus') {
+        stage('📦 Push vers Nexus') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "${NEXUS_CREDENTIALS_ID}",
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
-                    sh """
-                        echo \$PASS | docker login ${NEXUS_URL} -u \$USER --password-stdin
-                        docker tag ${IMAGE_TAG} ${IMAGE_FULL}
-                        docker push ${IMAGE_FULL}
+                    sh '''
+                        echo $PASS | docker login ${NEXUS_URL} -u $USER --password-stdin
+                        docker tag $IMAGE_TAG $IMAGE_FULL
+                        docker push $IMAGE_FULL
                         docker logout ${NEXUS_URL}
-                    """
+                    '''
                 }
             }
         }
@@ -179,7 +191,7 @@ pipeline {
         stage('🧹 Nettoyage') {
             steps {
                 sh '''
-                    docker rmi ${IMAGE_TAG} || true
+                    docker rmi $IMAGE_TAG || true
                     docker system prune -f
                 '''
             }
