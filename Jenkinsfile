@@ -45,6 +45,10 @@ pipeline {
         SNYK_REPORT_FILE      = 'snyk_report.html'
     }
 
+    snykSecurity(
+        snykTokenId: "${SNYK_AUTH_TOKEN}",
+    )
+
     stages {
 
         stage('📥 Checkout Git') {
