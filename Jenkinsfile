@@ -4,6 +4,7 @@ pipeline {
     tools {
         jdk 'jdk'
         maven 'maven'
+        synk 'snyk'
     }
 
     options {
