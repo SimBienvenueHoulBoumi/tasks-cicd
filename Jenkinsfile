@@ -21,7 +21,7 @@ pipeline {
 
         SONAR_PROJECT_KEY        = 'tasks-cicd'
         SONAR_HOST_URL           = 'http://172.20.10.3:9000'  // IP de l'hôte SonarQube
-        
+
         SONAR_TOKEN_CREDENTIAL_ID = 'SONARQUBE-JENKINS-TOKEN'
         SONAR_SCANNER_IMAGE      = 'sonarsource/sonar-scanner-cli'
 
@@ -168,15 +168,25 @@ pipeline {
         }
 
         stage('📊 Analyse SonarQube') {
-            environment {
-                MAVEN_OPTS = "-DskipTests"
-            }
             steps {
-                withSonarQubeEnv('sonarserver') {
-                    sh './mvnw clean install sonar:sonar -Dsonar.projectKey=${SONAR_PROJECT_KEY}'
+                script {
+                    // Utilisation du plugin SonarQube intégré à Jenkins (avec alias configuré : 'sonarserver')
+                    withSonarQubeEnv('sonarserver') {
+                        // Injection sécurisée du token via Jenkins Credentials
+                        withCredentials([string(credentialsId: "${SONAR_TOKEN_CREDENTIAL_ID}", variable: 'SONAR_TOKEN')]) {
+                            sh '''
+                                echo "🔍 Lancement de l'analyse SonarQube avec Maven"
+                                ./mvnw clean install sonar:sonar \
+                                  -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                  -Dsonar.host.url=${SONAR_HOST_URL} \
+                                  -Dsonar.token=${SONAR_TOKEN}
+                            '''
+                        }
+                    }
                 }
             }
         }
+
 
         stage('📦 Push vers Nexus') {
             steps {
