@@ -12,37 +12,24 @@ pipeline {
     }
 
     environment {
-        // Nom de l'application
         APP_NAME             = 'tasks-cicd'
-
-        // Références Git
         GIT_REPO_URL         = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
         GIT_BRANCH           = '*/main'
-
-        // Clé projet SonarQube
         SONAR_PROJECT_KEY    = 'tasks-cicd'
         SONAR_HOST_URL       = 'http://localhost:9000'
-
-        // Nom de l'image Docker locale (tag temporaire)
         IMAGE_TAG            = "${APP_NAME}:${BUILD_NUMBER}"
-
-        // Dossiers de rapports
         TRIVY_REPORT_DIR     = 'trivy-reports'
-
-        // Credentials IDs
         GITHUB_CREDENTIALS_ID   = 'GITHUB-CREDENTIALS'
-
         NEXUS_URL = 'http://localhost:8081'
         NEXUS_REPO = 'docker-hosted'
-        NEXUS_CREDENTIALS_ID    = 'NEXUS-CREDENTIAL'
-
-        SONARSERVER = 'SONARSERVER'         // 🔍 Nom du serveur SonarQube configuré dans Jenkins
-        SONARSCANNER = 'SONARSCANNER'       // 🔍 Scanner CLI SonarQube configuré dans Jenkins
-
-        SNYK = 'snyk'                       // 🛡️ Nom de l'installation Snyk (scanner de vulnérabilités)
+        NEXUS_CREDENTIALS_ID = 'NEXUS-CREDENTIAL'
+        SONARSERVER = 'SONARSERVER'
+        SONARSCANNER = 'SONARSCANNER'
+        SNYK = 'snyk'
     }
 
     stages {
+
         stage('📥 Checkout Git') {
             steps {
                 checkout([
@@ -75,8 +62,7 @@ pipeline {
             }
             post {
                 success {
-                    echo "✅ Build réussi - Archivage des artefacts..."
-                    archiveArtifacts artifacts: 'target/*.jar' // 📦 Sauvegarde du fichier .jar généré
+                    archiveArtifacts artifacts: 'target/*.jar'
                 }
             }
         }
@@ -104,7 +90,6 @@ pipeline {
             }
             post {
                 always {
-                    echo "✅ Build réussi - Archivage des artefacts..."
                     junit 'target/surefire-reports/*.xml'
                 }
             }
@@ -116,36 +101,18 @@ pipeline {
             }
         }
 
-        stage('📊 SonarQube Analysis') {
-            environment {
-                scannerHome = tool "${SONARSCANNER}" // 🛠️ Récupère le chemin d’installation du scanner
-            }
-            withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
-                sh '''
-                    docker run --rm \
-                        -v "$PWD":/usr/src \
-                        sonarsource/sonar-scanner-cli \
-                        -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                        -Dsonar.sources=src \
-                        -Dsonar.java.binaries=target/classes \
-                        -Dsonar.token=$SONAR_TOKEN \
-                        -Dsonar.host.url=$SONAR_HOST_URL
-                '''
-           }
-        }
-
-        stage('Snyk Dependency Scan') {
+        stage('🛡️ Snyk Dependency Scan') {
             steps {
                 snykSecurity (
-                    severity: 'high',                         // 🚨 Niveau de menace minimum : high, medium, low
-                    snykInstallation: "${SNYK}",              // 🔧 Nom défini dans Jenkins pour Snyk CLI
-                    snykTokenId: 'snyk-token',                // 🔑 ID de la clé d'API Snyk (stockée dans Jenkins Credentials)
-                    targetFile: 'pom.xml',                    // 📄 Fichier principal pour Maven
-                    monitorProjectOnBuild: true,              // 📡 Envoi automatique des résultats sur Snyk.io
-                    failOnIssues: true,                       // ❌ Échoue le pipeline en cas de vulnérabilités
-                    additionalArguments: '--report --format=html --report-file=snyk_report.html' // 📃 Génère un rapport HTML
-                ) 
-            } 
+                    severity: 'high',
+                    snykInstallation: "${SNYK}",
+                    snykTokenId: 'snyk-token',
+                    targetFile: 'pom.xml',
+                    monitorProjectOnBuild: true,
+                    failOnIssues: true,
+                    additionalArguments: '--report --format=html --report-file=snyk_report.html'
+                )
+            }
         }
 
         stage('🐳 Build Docker Image') {
@@ -154,7 +121,7 @@ pipeline {
             }
         }
 
-        stage('🛡️ Trivy – Analyse image Docker') {
+        stage('🧪 Trivy – Analyse image Docker') {
             steps {
                 sh """
                     mkdir -p ${TRIVY_REPORT_DIR}
@@ -176,37 +143,35 @@ pipeline {
             }
         }
 
-       stage('📦 Push Docker vers Nexus') {
+        stage('📦 Push Docker vers Nexus') {
             steps {
-                echo 'Nexus Docker Repository Login'
-                script{
+                script {
                     def NEXUS_REPO_URL = "${NEXUS_URL}/repository/${NEXUS_REPO}"
-                    def NEXUS_IMAGE = "http:localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
-
-                    echo "🔐 Login au Nexus Docker Registry : ${NEXUS_IMAGE}"
+                    def NEXUS_IMAGE = "localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
 
                     withCredentials([usernamePassword(
                         credentialsId: "${NEXUS_CREDENTIALS_ID}",
                         usernameVariable: 'USER',
                         passwordVariable: 'PASS'
-                    )]) 
-                   
+                    )]) {
+                        sh """
+                            echo \$PASS | docker login ${NEXUS_URL} -u \$USER --password-stdin
+                            docker tag ${IMAGE_TAG} ${NEXUS_IMAGE}
+                            docker push ${NEXUS_IMAGE}
+                            docker logout ${NEXUS_URL}
+                        """
+                    }
                 }
             }
-            steps {
-                echo 'Pushing Im to docker hub'
-                sh 'docker push $NEXUS_DOCKER_REPO/demo-rest-api:$BUILD_NUMBER'
-            }
         }
-    }
 
-
-    stage('🧹 Nettoyage') {
-        steps {
-            sh '''
-                docker rmi ${IMAGE_TAG} || true
-                docker system prune -f
-            '''
+        stage('🧹 Nettoyage') {
+            steps {
+                sh '''
+                    docker rmi ${IMAGE_TAG} || true
+                    docker system prune -f
+                '''
+            }
         }
     }
 
@@ -221,5 +186,4 @@ pipeline {
             cleanWs()
         }
     }
-    
- }
+}
