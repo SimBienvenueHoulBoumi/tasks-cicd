@@ -168,9 +168,12 @@ pipeline {
                 script {
                     // Utilisation du plugin SonarQube intégré à Jenkins (avec alias configuré : 'sonarserver')
                     withSonarQubeEnv('sonarserver') {
-                            sh "./mvnw clean install sonar:sonar \
-                            -Dsonar.host.url=$SONAR_HOST_URL \ 
-                            -Dsonar.projectKey=$SONAR_PROJECT_KEY"
+                            sh '''
+                                ./mvnw clean install  \
+                                sonar:sonar  \
+                                -Dsonar.host.url=$SONAR_HOST_URL  \
+                                -Dsonar.projectKey=$SONAR_PROJECT_KEY
+                            '''
                         }
                 }
             }
