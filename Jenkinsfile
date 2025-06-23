@@ -126,24 +126,19 @@ pipeline {
             }
         }
 
-        stage('📦 Push Docker vers Nexus') {
+       stage('📦 Push Docker vers Nexus') {
             steps {
-                script {
-                    def NEXUS_REPO_URL = "${NEXUS_URL}/repository/${NEXUS_REPO}"
-                    def NEXUS_IMAGE = "localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
-
-                    withCredentials([usernamePassword(
-                        credentialsId: "${NEXUS_CREDENTIALS_ID}",
-                        usernameVariable: 'USER',
-                        passwordVariable: 'PASS'
-                    )]) {
-                        sh """
-                            echo \$PASS | docker login ${NEXUS_URL} -u \$USER --password-stdin
-                            docker tag ${IMAGE_TAG} ${NEXUS_IMAGE}
-                            docker push ${NEXUS_IMAGE}
-                            docker logout ${NEXUS_URL}
-                        """
-                    }
+                withCredentials([usernamePassword(
+                    credentialsId: "${NEXUS_CREDENTIALS_ID}",
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh """
+                        echo \$PASS | docker login ${NEXUS_URL} -u \$USER --password-stdin
+                        docker tag ${IMAGE_TAG} localhost:8085/${APP_NAME}:${BUILD_NUMBER}
+                        docker push localhost:8085/${APP_NAME}:${BUILD_NUMBER}
+                        docker logout ${NEXUS_URL}
+                    """
                 }
             }
         }
