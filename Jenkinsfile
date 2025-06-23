@@ -176,7 +176,6 @@ pipeline {
             }
         }
 
-
         stage('🧹 Nettoyage') {
             steps {
                 sh '''
