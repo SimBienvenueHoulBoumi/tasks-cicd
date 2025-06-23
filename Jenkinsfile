@@ -142,10 +142,15 @@ pipeline {
         stage('🔍 Trivy - Analyse Image') {
             steps {
                 sh '''
+                    echo "🧹 Nettoyage du cache Java de Trivy (évite les erreurs de type 'context deadline exceeded')"
+                    docker run --rm ${TRIVY_IMAGE} --reset
+
+                    echo "🔍 Analyse de l’image Docker avec Trivy (failles CRITICAL et HIGH uniquement)"
                     docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
                         -v $(pwd)/${TRIVY_REPORT_DIR}:/root/reports \
                         ${TRIVY_IMAGE} image $IMAGE_TAG \
+                        --timeout 10m \
                         --exit-code 0 \
                         --severity ${TRIVY_SEVERITY} \
                         --format json \
@@ -153,6 +158,7 @@ pipeline {
                 '''
             }
         }
+
 
         stage('📁 Archive Rapports Trivy') {
             steps {
