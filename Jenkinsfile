@@ -26,6 +26,8 @@ pipeline {
         SONARSERVER = 'SONARSERVER'
         SONARSCANNER = 'SONARSCANNER'
         SNYK = 'snyk'
+        SNYK_TOKEN = 'snyk-token'
+        SNYK_SEVERITY = 'high'
     }
 
     stages {
@@ -87,9 +89,9 @@ pipeline {
         stage('🛡️ Snyk Dependency Scan') {
             steps {
                 snykSecurity (
-                    severity: 'high',
+                    severity: "${SNYK_SEVERITY}",
                     snykInstallation: "${SNYK}",
-                    snykTokenId: 'snyk-token',
+                    snykTokenId: "${SNYK_TOKEN}",
                     targetFile: 'pom.xml',
                     monitorProjectOnBuild: true,
                     failOnIssues: true,
@@ -104,24 +106,55 @@ pipeline {
             }
         }
 
-        stage('🧪 Trivy – Analyse image Docker') {
+        stage('🔍 Trivy – Analyse code source (fs)') {
             steps {
-                sh """
-                    mkdir -p ${TRIVY_REPORT_DIR}
+                sh '''
+                    mkdir -p trivy-reports
                     docker run --rm \
-                        -v /var/run/docker.sock:/var/run/docker.sock \
-                        -v $PWD/${TRIVY_REPORT_DIR}:/root/reports \
-                        aquasec/trivy:latest image \
+                        -v $(pwd):/project \
+                        -v $(pwd)/trivy-reports:/root/reports \
+                        aquasec/trivy:latest fs /project \
                         --exit-code 0 \
                         --severity CRITICAL,HIGH \
                         --format json \
-                        --output /root/reports/trivy-image-report.json \
-                        ${IMAGE_TAG}
+                        --output /root/reports/trivy-fs-report.json
+                '''
+            }
+        }
+
+        stage('🔍 Trivy – Analyse image Docker') {
+            steps {
+                sh """
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v $(pwd)/trivy-reports:/root/reports \
+                        aquasec/trivy:latest image ${IMAGE_TAG} \
+                        --exit-code 0 \
+                        --severity CRITICAL,HIGH \
+                        --format json \
+                        --output /root/reports/trivy-image-report.json
                 """
             }
-            post {
-                always {
-                    archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/trivy-image-report.json", allowEmptyArchive: true
+        }
+
+        stage('📁 Archive Trivy Reports') {
+            steps {
+                archiveArtifacts artifacts: 'trivy-reports/*.json', fingerprint: true
+            }
+        }
+
+        stage('📊 Analyse Docker Image avec SonarQube') {
+            steps {
+                withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        docker run --rm \
+                            -v "$PWD":/usr/src \
+                            sonarsource/sonar-scanner-cli \
+                            -Dsonar.host.url=http://host.docker.internal:9000 \
+                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                            -Dsonar.sources=. \
+                            -Dsonar.token=$SONAR_TOKEN
+                    '''
                 }
             }
         }
@@ -139,22 +172,6 @@ pipeline {
                         docker push localhost:8085/${APP_NAME}:${BUILD_NUMBER}
                         docker logout ${NEXUS_URL}
                     """
-                }
-            }
-        }
-
-        stage('📊 Analyse Docker Image avec SonarQube') {
-            steps {
-                withCredentials([string(credentialsId: 'SONAR-TOKEN', variable: 'SONAR_TOKEN')]) {
-                    sh '''
-                        docker run --rm \
-                            -v "$PWD":/usr/src \
-                            sonarsource/sonar-scanner-cli \
-                            -Dsonar.host.url=http://host.docker.internal:9000 \
-                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                            -Dsonar.sources=. \
-                            -Dsonar.token=$SONAR_TOKEN
-                    '''
                 }
             }
         }
