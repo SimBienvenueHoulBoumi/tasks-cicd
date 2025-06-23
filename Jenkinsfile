@@ -168,13 +168,14 @@ pipeline {
                 )]) {
                     sh """
                         echo \$PASS | docker login ${NEXUS_URL} -u \$USER --password-stdin
-                        docker tag ${IMAGE_TAG} localhost:8085/${APP_NAME}:${BUILD_NUMBER}
-                        docker push localhost:8085/${APP_NAME}:${BUILD_NUMBER}
+                        docker tag ${IMAGE_TAG} ${IMAGE_FULL}
+                        docker push ${IMAGE_FULL}
                         docker logout ${NEXUS_URL}
                     """
                 }
             }
         }
+
 
         stage('🧹 Nettoyage') {
             steps {
