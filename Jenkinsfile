@@ -7,7 +7,6 @@ pipeline {
         snyk 'snyk'
     }
 
-
     options {
         timestamps()
         skipDefaultCheckout(false)// Limite le nombre de builds gardés
