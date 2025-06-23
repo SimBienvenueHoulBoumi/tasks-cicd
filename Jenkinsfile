@@ -39,7 +39,7 @@ pipeline {
         NEXUS_CREDENTIALS_ID  = 'NEXUS-CREDENTIAL'
 
         SNYK                  = 'snyk'
-        SNYK_TOKEN_ID         = 'SNYK-TOKEN-ID'
+        SNYK_AUTH_TOKEN       = 'SNYK_AUTH_TOKEN'
         SNYK_SEVERITY         = 'high'
         SNYK_TARGET_FILE      = 'pom.xml'
         SNYK_REPORT_FILE      = 'snyk_report.html'
@@ -106,7 +106,7 @@ pipeline {
                 snykSecurity (
                     severity: "${SNYK_SEVERITY}",
                     snykInstallation: "${SNYK}",
-                    snykTokenId: "${SNYK_TOKEN_ID}",
+                    snykTokenId: "${SNYK_AUTH_TOKEN}",
                     targetFile: "${SNYK_TARGET_FILE}",
                     monitorProjectOnBuild: true,
                     failOnIssues: false,
