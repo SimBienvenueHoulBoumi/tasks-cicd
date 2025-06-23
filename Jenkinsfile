@@ -6,56 +6,56 @@ pipeline {
     // 🛠️ Outils déclarés dans Jenkins (Tools Global Configuration)
     tools {
         jdk 'jdk'              // Java Development Kit préinstallé
-        maven 'maven'          // Maven CLI (Wrapper utilisé dans le code aussi)
+        maven 'maven'          // Maven CLI préinstallé (mvnw utilisé aussi)
     }
 
     // ⚙️ Options globales du pipeline
     options {
-        timestamps() // ⏱️ Ajoute les timestamps dans les logs pour la traçabilité
-        skipDefaultCheckout(false) // 📥 Active le checkout implicite
-        buildDiscarder(logRotator(numToKeepStr: '5')) // ♻️ Conserve les 5 derniers builds
-        timeout(time: 30, unit: 'MINUTES') // ⏳ Stoppe le pipeline s’il dépasse 30 min
+        timestamps()                          // ⏱️ Logs horodatés
+        skipDefaultCheckout(false)            // 📥 Active le checkout implicite
+        buildDiscarder(logRotator(numToKeepStr: '5')) // ♻️ Garde les 5 derniers builds
+        timeout(time: 30, unit: 'MINUTES')    // ⏳ Timeout pipeline = 30 min
     }
 
     // 🌍 Variables d’environnement globales
     environment {
-        // 🔧 Git & Projet
-        APP_NAME              = 'tasks-cicd'
-        GIT_REPO_URL          = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GIT_BRANCH            = '*/main'
-        GITHUB_CREDENTIALS_ID = 'GITHUB-CREDENTIALS'
+        // 🔧 Projet Git
+        APP_NAME                 = 'tasks-cicd'
+        GIT_REPO_URL             = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
+        GIT_BRANCH               = '*/main'
+        GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS' // 🔐 SSH key GitHub
 
         // 📊 SonarQube
-        SONAR_PROJECT_KEY     = 'tasks-cicd'
-        SONAR_HOST_URL        = 'http://host.docker.internal:9000'
-        SONAR_TOKEN_ID        = 'SONAR-TOKEN'
-        SONAR_SCANNER_IMAGE   = 'sonarsource/sonar-scanner-cli'
+        SONAR_PROJECT_KEY        = 'tasks-cicd'
+        SONAR_HOST_URL           = 'http://host.docker.internal:9000'
+        SONAR_TOKEN_CREDENTIAL_ID = 'SONAR-TOKEN'       // 🔐 SonarQube token
+        SONAR_SCANNER_IMAGE      = 'sonarsource/sonar-scanner-cli'
 
         // 🐳 Docker
-        IMAGE_TAG             = "${APP_NAME}:${BUILD_NUMBER}"
-        IMAGE_FULL            = "localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_TAG                = "${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_FULL               = "localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
 
-        // 🔍 Trivy (scan sécurité)
-        TRIVY_IMAGE           = 'aquasec/trivy:latest'
-        TRIVY_REPORT_DIR      = 'trivy-reports'
-        TRIVY_SEVERITY        = 'CRITICAL,HIGH'
-        TRIVY_OUTPUT_FS       = '/root/reports/trivy-fs-report.json'
-        TRIVY_OUTPUT_IMAGE    = '/root/reports/trivy-image-report.json'
+        // 🔍 Trivy
+        TRIVY_IMAGE              = 'aquasec/trivy:latest'
+        TRIVY_REPORT_DIR         = 'trivy-reports'
+        TRIVY_SEVERITY           = 'CRITICAL,HIGH'
+        TRIVY_OUTPUT_FS          = '/root/reports/trivy-fs-report.json'
+        TRIVY_OUTPUT_IMAGE       = '/root/reports/trivy-image-report.json'
 
-        // 📦 Nexus (registry privé)
-        NEXUS_URL             = 'http://localhost:8081'
-        NEXUS_REPO            = 'docker-hosted'
-        NEXUS_CREDENTIALS_ID  = 'NEXUS-CREDENTIAL'
+        // 📦 Nexus
+        NEXUS_URL                = 'http://localhost:8081'
+        NEXUS_REPO               = 'docker-hosted'
+        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'   // 🔐 Nexus login
 
-        // 🛡️ Snyk (analyse vulnérabilités)
-        SNYK                  = 'snyk'
-        SNYK_AUTH_TOKEN       = 'SNYK_AUTH_TOKEN'
-        SNYK_SEVERITY         = 'high'
-        SNYK_TARGET_FILE      = 'pom.xml'
-        SNYK_REPORT_FILE      = 'snyk_report.html'
+        // 🛡️ Snyk
+        SNYK_BIN                 = 'snyk'                // Nom binaire
+        SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'     // 🔐 Snyk token
+        SNYK_SEVERITY            = 'high'
+        SNYK_TARGET_FILE         = 'pom.xml'
+        SNYK_REPORT_FILE         = 'snyk_report.html'
     }
 
-    // 🧱 Déroulé des étapes
+    // 🧱 Déroulement des étapes
     stages {
 
         stage('📥 Checkout Git') {
@@ -114,9 +114,8 @@ pipeline {
 
         stage('🛡️ Analyse Snyk') {
             steps {
-                withCredentials([string(credentialsId: "${SNYK_AUTH_TOKEN}", variable: 'SNYK_TOKEN')]) {
+                withCredentials([string(credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", variable: 'SNYK_TOKEN')]) {
                     sh '''
-                        # Télécharger Snyk CLI temporairement
                         curl -Lo snyk https://static.snyk.io/cli/latest/snyk-macos
                         chmod +x snyk
                         ./snyk auth "$SNYK_TOKEN"
@@ -176,14 +175,14 @@ pipeline {
 
         stage('📊 Analyse SonarQube') {
             steps {
-                withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
+                withCredentials([string(credentialsId: "${SONAR_TOKEN_CREDENTIAL_ID}", variable: 'SONAR_TOKEN')]) {
                     sh '''
                         mvn clean install -DskipTests
                         docker run --rm \
                         -v "$PWD:/usr/src" \
-                        sonarsource/sonar-scanner-cli \
-                        -Dsonar.host.url=http://host.docker.internal:9000 \
-                        -Dsonar.projectKey=tasks-cicd \
+                        ${SONAR_SCANNER_IMAGE} \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                         -Dsonar.sources=. \
                         -Dsonar.java.binaries=target/classes \
                         -Dsonar.token=$SONAR_TOKEN
@@ -219,7 +218,7 @@ pipeline {
         }
     }
 
-    // 🔚 Bloc post-traitement du pipeline
+    // 🔚 Bloc post-exécution
     post {
         success {
             echo '✅ Pipeline terminé avec succès.'
@@ -228,7 +227,7 @@ pipeline {
             echo '❌ Échec du pipeline.'
         }
         always {
-            cleanWs() // 🧽 Nettoyage du workspace Jenkins à la fin
+            cleanWs() // 🧽 Nettoyage du workspace Jenkins
         }
     }
 }
