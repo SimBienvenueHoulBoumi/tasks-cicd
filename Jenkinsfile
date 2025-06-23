@@ -4,8 +4,9 @@ pipeline {
     tools {
         jdk 'jdk'
         maven 'maven'
-        synk 'snyk'
+        snyk 'snyk'
     }
+
 
     options {
         skipDefaultCheckout true
