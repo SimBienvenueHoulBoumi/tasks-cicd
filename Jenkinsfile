@@ -18,11 +18,8 @@ pipeline {
         GIT_BRANCH               = '*/main'
         GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS'
 
+        SONAR_HOST_URL          = 'http://localhost:9000'  // URL de votre serveur SonarQube
         SONAR_PROJECT_KEY        = 'tasks-cicd'  // Clé du projet SonarQube
-        SONAR_HOST_URL = 'http://sonarqube:9000' // IP de l'hôte SonarQube
-
-        SONAR_TOKEN_CREDENTIAL_ID = 'SONARQUBE-JENKINS-TOKEN'  // ID du token Jenkins pour SonarQube
-        SONAR_SCANNER_IMAGE      = 'sonarsource/sonar-scanner-cli'  // Image Docker pour SonarQube Scanner
 
         IMAGE_TAG                = "${APP_NAME}:${BUILD_NUMBER}"
         IMAGE_FULL               = "localhost:8085/${APP_NAME}:${BUILD_NUMBER}"
@@ -171,17 +168,10 @@ pipeline {
                 script {
                     // Utilisation du plugin SonarQube intégré à Jenkins (avec alias configuré : 'sonarserver')
                     withSonarQubeEnv('sonarserver') {
-                        // Injection sécurisée du token via Jenkins Credentials
-                        withCredentials([string(credentialsId: "${SONAR_TOKEN_CREDENTIAL_ID}", variable: 'SONAR_TOKEN')]) {
-                            sh """
-                                echo "🔍 Lancement de l'analyse SonarQube avec Maven"
-                                ./mvnw clean install sonar:sonar \
-                                  -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                                  -Dsonar.host.url=${SONAR_HOST_URL} \
-                                  -Dsonar.token=${SONAR_TOKEN}
-                            """
+                            sh "./mvnw clean install sonar:sonar \
+                            -Dsonar.host.url=$SONAR_HOST_URL \ 
+                            -Dsonar.projectKey=$SONAR_PROJECT_KEY"
                         }
-                    }
                 }
             }
         }
