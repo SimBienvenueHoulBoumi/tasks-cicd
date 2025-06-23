@@ -7,7 +7,6 @@ pipeline {
     tools {
         jdk 'jdk'              // Java Development Kit préinstallé
         maven 'maven'          // Maven CLI (Wrapper utilisé dans le code aussi)
-        snyk 'snyk'            // Snyk CLI installé via Jenkins Tools (nom exact)
     }
 
     // ⚙️ Options globales du pipeline
@@ -117,14 +116,11 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: "${SNYK_AUTH_TOKEN}", variable: 'SNYK_TOKEN')]) {
                     sh '''
-                        # Ajoute Snyk dans le PATH (modifie le chemin si différent chez toi)
-                        export PATH=$PATH:$JENKINS_HOME/tools/io.snyk.jenkins.tools.SnykInstallation/snyk
-
-                        # Authentification Snyk
-                        snyk auth "$SNYK_TOKEN"
-
-                        # Scan
-                        snyk test \
+                        # Télécharger Snyk CLI temporairement
+                        curl -Lo snyk https://static.snyk.io/cli/latest/snyk-macos
+                        chmod +x snyk
+                        ./snyk auth "$SNYK_TOKEN"
+                        ./snyk test \
                             --file=${SNYK_TARGET_FILE} \
                             --severity-threshold=${SNYK_SEVERITY} \
                             --report \
@@ -134,7 +130,6 @@ pipeline {
                 }
             }
         }
-
 
         stage('🐳 Build Docker') {
             steps {
