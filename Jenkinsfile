@@ -43,6 +43,10 @@ pipeline {
         SNYK_SEVERITY            = 'high'  // Seuil de sévérité pour Snyk
         SNYK_TARGET_FILE         = 'pom.xml'  // Fichier cible pour l'analyse Snyk
         SNYK_REPORT_FILE         = 'snyk_report.html'  // Nom du fichier de rapport Snyk
+
+        GIT_REPO_URL            = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
+        GIT_BRANCH              = '*/main'
+        GITHUB_CREDENTIALS_ID   = 'GITHUB-CREDENTIALS'
     }
 
     stages {
