@@ -25,12 +25,12 @@ pipeline {
         TRIVY_OUTPUT_FS          = '/root/reports/trivy-fs-report.json'
         TRIVY_OUTPUT_IMAGE       = '/root/reports/trivy-image-report.json'
 
-        NEXUS_HOST               = 'localhost'
-        NEXUS_PORT               = '8081'
-        NEXUS_PORT_DOCKER        = '8085'
-        NEXUS_URL                = "http://${NEXUS_HOST}:${NEXUS_PORT}"
-        NEXUS_REPO               = 'docker-hosted'
-        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'
+       // NEXUS_HOST               = 'localhost'
+       //  NEXUS_PORT               = '8081'
+       //  NEXUS_PORT_DOCKER        = '8085'
+       //  NEXUS_URL                = "http://${NEXUS_HOST}:${NEXUS_PORT}"
+       //  NEXUS_REPO               = 'docker-hosted'
+       //  NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'
 
         SNYK_PROJET              = 'snyk-macos'
         SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'
@@ -159,7 +159,7 @@ pipeline {
             }
         }
        // ✅ Publication avenir des logs vers ELK (ElasticSearch, Logstash, Kibana)
-
+/*
         stage('📦 Push vers Nexus') {
             steps {
                 withCredentials([usernamePassword(
@@ -176,7 +176,7 @@ pipeline {
                 }
             }
         }
-
+*/
         stage('🧹 Nettoyage') {
             steps {
                 sh '''
