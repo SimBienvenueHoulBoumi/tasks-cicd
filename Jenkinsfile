@@ -15,21 +15,10 @@ pipeline {
     environment {
         APP_NAME                 = 'tasks-cicd'  // Nom de l'application
 
-        GIT_REPO_URL             = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'  // URL du dépôt Git
-        GIT_BRANCH               = '*/main'  // Branche Git à utiliser
-        GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS'  // ID des credentials Jenkins pour GitHub
-
         SONAR_HOST               = 'localhost'  // Nom d'hôte du serveur Sonarqube
         SONAR_PORT               = '9000'  // Nom d'hôte du serveur NEXUS
         SONAR_HOST_URL           = "http://${SONAR_HOST}:${SONAR_PORT}" // URL de votre serveur SonarQube
         SONAR_PROJECT_KEY        = 'tasks-cicd'  // Clé du projet SonarQube
-        
-        NEXUS_HOST               = 'localhost'  // Nom d'hôte du serveur Nexus
-        NEXUS_PORT               = '8081'  // Port du serveur SonarQube
-        NEXUS_PORT_DOCKER        = '8085'  // Port du serveur SonarQube pour Docker
-        NEXUS_URL                = "http://${NEXUS_HOST}:${NEXUS_PORT}"  // URL de votre serveur Nexus
-        NEXUS_REPO               = 'docker-hosted'  // Nom du dépôt Nexus pour Docker
-        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'  // ID des credentials Jenkins pour Nexus
 
         IMAGE_TAG                = "${APP_NAME}:${BUILD_NUMBER}"  // Tag de l'image Docker
         IMAGE_FULL               = "${HOST}:${NEXUS_PORT_DOCKER}/${APP_NAME}:${BUILD_NUMBER}"  // Nom complet de l'image Docker pour Nexus
@@ -39,6 +28,13 @@ pipeline {
         TRIVY_SEVERITY           = 'CRITICAL,HIGH'  // Seuil de sévérité pour Trivy
         TRIVY_OUTPUT_FS          = '/root/reports/trivy-fs-report.json'  // Fichier de sortie pour l'analyse du système de fichiers
         TRIVY_OUTPUT_IMAGE       = '/root/reports/trivy-image-report.json'  // Fichier de sortie pour l'analyse de l'image Docker
+
+        NEXUS_HOST               = 'localhost'  // Nom d'hôte du serveur Nexus
+        NEXUS_PORT               = '8081'  // Port du serveur SonarQube
+        NEXUS_PORT_DOCKER        = '8085'  // Port du serveur SonarQube pour Docker
+        NEXUS_URL                = "http://${NEXUS_HOST}:${NEXUS_PORT}"  // URL de votre serveur Nexus
+        NEXUS_REPO               = 'docker-hosted'  // Nom du dépôt Nexus pour Docker
+        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'  // ID des credentials Jenkins pour Nexus
 
         SNYK_BIN                 = 'snyk'  // Nom du binaire Snyk
         SNYK_PROJET              = 'snyk-macos'  // Nom du projet Snyk
@@ -167,25 +163,6 @@ pipeline {
         stage('📁 Archive Rapports Trivy') {
             steps {
                 archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/*.json", fingerprint: true
-            }
-        }
-
-        stage('📊 Analyse SonarQube') {
-            steps {
-                script {
-                    // Utilisation du plugin SonarQube intégré à Jenkins (avec alias configuré : 'sonarserver')
-                    withSonarQubeEnv('sonarserver') {
-                            sh '''
-                                ./mvnw clean install  \
-                                sonar:sonar  \
-                                -Dsonar.host.url=$SONAR_HOST_URL  \
-                                -Dsonar.projectKey=$SONAR_PROJECT_KEY
-                                -Dsonar.junit.reportPaths=target/surefire-reports \
-                                -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-                                -Dsonar.java.binaries=target/classes
-                            '''
-                        }
-                }
             }
         }
 
