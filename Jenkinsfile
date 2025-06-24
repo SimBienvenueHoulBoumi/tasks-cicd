@@ -38,26 +38,9 @@ pipeline {
         SNYK_SEVERITY            = 'high'
         SNYK_TARGET_FILE         = 'pom.xml'
         SNYK_REPORT_FILE         = 'snyk_report.html'
-
-        GIT_REPO_URL             = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GIT_BRANCH               = '*/main'
-        GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS'
     }
 
     stages {
-        stage('📥 Checkout Git') {
-            steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "${GIT_BRANCH}"]],
-                    userRemoteConfigs: [[
-                        url: "${GIT_REPO_URL}",
-                        credentialsId: "${GITHUB_CREDENTIALS_ID}"
-                    ]]
-                ])
-            }
-        }
-
         stage('🔧 Maven Wrapper') {
             steps {
                 sh '''
