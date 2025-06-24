@@ -40,6 +40,19 @@ pipeline {
         SNYK_REPORT_FILE         = 'snyk_report.html'
     }
 
+    stage('📥 Checkout personnalisé') {
+        steps {
+            checkout([$class: 'GitSCM',
+            branches: [[name: '*/main']],
+            userRemoteConfigs: [[
+                url: 'git@github.com:simbienvenuehoulboumi/tasks-cicd.git',
+                credentialsId: 'GITHUB-TOKEN'
+            ]]
+            ])
+        }
+    }
+
+
     stages {
         stage('🔧 Maven Wrapper') {
             steps {
