@@ -118,54 +118,24 @@ pipeline {
                 }
             }
         }
-        stage('🛡️ Rapport Snyk') {
-                steps {
-                    sh '''
-                        echo "[INFO] Génération du rapport Snyk au format HTML..."
 
-                        ./snyk test \
-                        --file=${SNYK_TARGET_FILE} \
-                        --severity-threshold=${SNYK_SEVERITY} \
-                        --all-projects \
-                        --report \
-                        --format=html \
-                        --report-file=${SNYK_REPORT_FILE} || true
-
-                        echo "[INFO] Rapport HTML généré : ${SNYK_REPORT_FILE}"
-                    '''
-                    archiveArtifacts artifacts: "${SNYK_REPORT_FILE}", fingerprint: true
-
-                    // ✅ Publication HTML dans Jenkins (onglet dédié)
-                    publishHTML(target: [
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: '.',
-                        reportFiles: "${SNYK_REPORT_FILE}",
-                        reportName: 'Rapport Snyk',
-                        reportTitles: 'Snyk HTML Security Report'
-                    ])
+        stage('🔧 Préparation de l’image Docker et 🐳 Build Image Docker') {
+            steps {
+                script {
+                    def dockerfile = 'Dockerfile'
+                    if (!fileExists(dockerfile)) {
+                        error "❌ Le fichier ${dockerfile} est manquant. Veuillez vérifier votre dépôt."
+                    } else {
+                        echo "✅ Fichier ${dockerfile} trouvé. Début de la construction de l'image Docker..."
+                    }
                 }
-            }
 
-
-       stage('🔧 Préparation de l’image Docker et 🐳 Build Image Docker') {
-    steps {
-        script {
-            def dockerfile = 'Dockerfile'
-            if (!fileExists(dockerfile)) {
-                error "❌ Le fichier ${dockerfile} est manquant. Veuillez vérifier votre dépôt."
-            } else {
-                echo "✅ Fichier ${dockerfile} trouvé. Début de la construction de l'image Docker..."
+                sh '''
+                    echo "🐳 Construction de l'image Docker..."
+                    docker build -t $IMAGE_TAG .
+                '''
             }
         }
-
-        sh '''
-            echo "🐳 Construction de l'image Docker..."
-            docker build -t $IMAGE_TAG .
-        '''
-    }
-}
 
         stage('🔍 Trivy - Analyse Code') {
             steps {
@@ -205,7 +175,7 @@ pipeline {
                 '''
             }
         }
-       // ✅ Publication avenir vers ELK (ElasticSearch, Logstash, Kibana)
+       // ✅ Publication avenir des logs vers ELK (ElasticSearch, Logstash, Kibana)
 
         stage('📦 Push vers Nexus') {
             steps {
