@@ -41,7 +41,7 @@ pipeline {
         stage('📥 1. Checkout Git') {
             steps {
                 checkout([$class: 'GitSCM',
-                  branches: [[name: '*/main']], // Branche cible
+                  branches: [[name: 'main']], // Branche cible
                   userRemoteConfigs: [[
                     url: 'git@github.com:simbienvenuehoulboumi/tasks-cicd.git',
                     credentialsId: 'GITHUB-TOKEN'
