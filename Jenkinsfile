@@ -15,11 +15,6 @@ pipeline {
     environment {
         APP_NAME                 = 'tasks-cicd'  // Nom de l'application
 
-        SONAR_HOST               = 'localhost'  // Nom d'hôte du serveur Sonarqube
-        SONAR_PORT               = '9000'  // Nom d'hôte du serveur NEXUS
-        SONAR_HOST_URL           = "http://${SONAR_HOST}:${SONAR_PORT}" // URL de votre serveur SonarQube
-        SONAR_PROJECT_KEY        = 'tasks-cicd'  // Clé du projet SonarQube
-
         IMAGE_TAG                = "${APP_NAME}:${BUILD_NUMBER}"  // Tag de l'image Docker
         IMAGE_FULL               = "${HOST}:${NEXUS_PORT_DOCKER}/${APP_NAME}:${BUILD_NUMBER}"  // Nom complet de l'image Docker pour Nexus
 
@@ -36,7 +31,6 @@ pipeline {
         NEXUS_REPO               = 'docker-hosted'  // Nom du dépôt Nexus pour Docker
         NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'  // ID des credentials Jenkins pour Nexus
 
-        SNYK_BIN                 = 'snyk'  // Nom du binaire Snyk
         SNYK_PROJET              = 'snyk-macos'  // Nom du projet Snyk
         SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'  // ID du token Jenkins pour Snyk
         SNYK_PLATEFORM_PROJECT   = "https://static.snyk.io/cli/latest/${SNYK_PROJET}"  // URL du binaire Snyk pour macOS
@@ -104,22 +98,18 @@ pipeline {
             }
         }
 
-        stage('🛡️ Analyse Snyk') {
-            steps {
-                withCredentials([string(credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", variable: 'SNYK_TOKEN')]) {
-                    sh '''
-                        curl -Lo snyk ${SNYK_PLATEFORM_PROJECT}
-                        chmod +x snyk
-                        ./snyk auth "$SNYK_TOKEN"
-                        ./snyk test \
-                            --file=${SNYK_TARGET_FILE} \
-                            --severity-threshold=${SNYK_SEVERITY} \
-                            --report \
-                            --format=html \
-                            --report-file=${SNYK_REPORT_FILE} || true
-                    '''
-                }
-            }
+        withCredentials([string(credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", variable: 'SNYK_TOKEN')]) {
+            sh '''
+                curl -Lo snyk ${SNYK_PLATEFORM_PROJECT}
+                chmod +x snyk
+                ./snyk auth "$SNYK_TOKEN"
+                ./snyk test \
+                    --file=${SNYK_TARGET_FILE} \
+                    --severity-threshold=${SNYK_SEVERITY} \
+                    --report \
+                    --format=html \
+                    --report-file=${SNYK_REPORT_FILE} || true
+            '''
         }
 
         stage('🐳 Build Docker') {
