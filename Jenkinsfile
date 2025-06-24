@@ -5,6 +5,7 @@ pipeline {
         jdk 'jdk'
         maven 'maven'
     }
+
     options {
         timestamps()
         skipDefaultCheckout(false)
@@ -13,34 +14,34 @@ pipeline {
     }
 
     environment {
-        APP_NAME                 = 'tasks-cicd'  // Nom de l'application
+        APP_NAME                 = 'tasks-cicd'
 
-        IMAGE_TAG                = "${APP_NAME}:${BUILD_NUMBER}"  // Tag de l'image Docker
-        IMAGE_FULL               = "${HOST}:${NEXUS_PORT_DOCKER}/${APP_NAME}:${BUILD_NUMBER}"  // Nom complet de l'image Docker pour Nexus
+        IMAGE_TAG                = "${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_FULL               = "${HOST}:${NEXUS_PORT_DOCKER}/${APP_NAME}:${BUILD_NUMBER}"
 
-        TRIVY_IMAGE              = 'aquasec/trivy:latest'  // Image Docker de Trivy
-        TRIVY_REPORT_DIR         = 'trivy-reports'  // Répertoire pour les rapports Trivy
-        TRIVY_SEVERITY           = 'CRITICAL,HIGH'  // Seuil de sévérité pour Trivy
-        TRIVY_OUTPUT_FS          = '/root/reports/trivy-fs-report.json'  // Fichier de sortie pour l'analyse du système de fichiers
-        TRIVY_OUTPUT_IMAGE       = '/root/reports/trivy-image-report.json'  // Fichier de sortie pour l'analyse de l'image Docker
+        TRIVY_IMAGE              = 'aquasec/trivy:latest'
+        TRIVY_REPORT_DIR         = 'trivy-reports'
+        TRIVY_SEVERITY           = 'CRITICAL,HIGH'
+        TRIVY_OUTPUT_FS          = '/root/reports/trivy-fs-report.json'
+        TRIVY_OUTPUT_IMAGE       = '/root/reports/trivy-image-report.json'
 
-        NEXUS_HOST               = 'localhost'  // Nom d'hôte du serveur Nexus
-        NEXUS_PORT               = '8081'  // Port du serveur SonarQube
-        NEXUS_PORT_DOCKER        = '8085'  // Port du serveur SonarQube pour Docker
-        NEXUS_URL                = "http://${NEXUS_HOST}:${NEXUS_PORT}"  // URL de votre serveur Nexus
-        NEXUS_REPO               = 'docker-hosted'  // Nom du dépôt Nexus pour Docker
-        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'  // ID des credentials Jenkins pour Nexus
+        NEXUS_HOST               = 'localhost'
+        NEXUS_PORT               = '8081'
+        NEXUS_PORT_DOCKER        = '8085'
+        NEXUS_URL                = "http://${NEXUS_HOST}:${NEXUS_PORT}"
+        NEXUS_REPO               = 'docker-hosted'
+        NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'
 
-        SNYK_PROJET              = 'snyk-macos'  // Nom du projet Snyk
-        SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'  // ID du token Jenkins pour Snyk
-        SNYK_PLATEFORM_PROJECT   = "https://static.snyk.io/cli/latest/${SNYK_PROJET}"  // URL du binaire Snyk pour macOS
-        SNYK_SEVERITY            = 'high'  // Seuil de sévérité pour Snyk
-        SNYK_TARGET_FILE         = 'pom.xml'  // Fichier cible pour l'analyse Snyk
-        SNYK_REPORT_FILE         = 'snyk_report.html'  // Nom du fichier de rapport Snyk
+        SNYK_PROJET              = 'snyk-macos'
+        SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'
+        SNYK_PLATEFORM_PROJECT   = "https://static.snyk.io/cli/latest/${SNYK_PROJET}"
+        SNYK_SEVERITY            = 'high'
+        SNYK_TARGET_FILE         = 'pom.xml'
+        SNYK_REPORT_FILE         = 'snyk_report.html'
 
-        GIT_REPO_URL            = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GIT_BRANCH              = '*/main'
-        GITHUB_CREDENTIALS_ID   = 'GITHUB-CREDENTIALS'
+        GIT_REPO_URL             = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
+        GIT_BRANCH               = '*/main'
+        GITHUB_CREDENTIALS_ID    = 'GITHUB-CREDENTIALS'
     }
 
     stages {
@@ -98,18 +99,22 @@ pipeline {
             }
         }
 
-        withCredentials([string(credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", variable: 'SNYK_TOKEN')]) {
-            sh '''
-                curl -Lo snyk ${SNYK_PLATEFORM_PROJECT}
-                chmod +x snyk
-                ./snyk auth "$SNYK_TOKEN"
-                ./snyk test \
-                    --file=${SNYK_TARGET_FILE} \
-                    --severity-threshold=${SNYK_SEVERITY} \
-                    --report \
-                    --format=html \
-                    --report-file=${SNYK_REPORT_FILE} || true
-            '''
+        stage('🛡️ Analyse Snyk') {
+            steps {
+                withCredentials([string(credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", variable: 'SNYK_TOKEN')]) {
+                    sh '''
+                        curl -Lo snyk ${SNYK_PLATEFORM_PROJECT}
+                        chmod +x snyk
+                        ./snyk auth "$SNYK_TOKEN"
+                        ./snyk test \
+                            --file=${SNYK_TARGET_FILE} \
+                            --severity-threshold=${SNYK_SEVERITY} \
+                            --report \
+                            --format=html \
+                            --report-file=${SNYK_REPORT_FILE} || true
+                    '''
+                }
+            }
         }
 
         stage('🐳 Build Docker') {
@@ -159,7 +164,6 @@ pipeline {
                 archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/*.json", fingerprint: true
             }
         }
-
 
         stage('📦 Push vers Nexus') {
             steps {
