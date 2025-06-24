@@ -103,17 +103,29 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", variable: 'SNYK_TOKEN')]) {
                     sh '''
+                        echo "[INFO] Téléchargement de Snyk CLI..."
                         curl -Lo snyk ${SNYK_PLATEFORM_PROJECT}
                         chmod +x snyk
+
+                        echo "[INFO] Authentification avec le token..."
                         ./snyk auth "$SNYK_TOKEN"
-                        ./snyk test \
-                            --file=${SNYK_TARGET_FILE} \
-                            --severity-threshold=${SNYK_SEVERITY} \
-                            --report \
-                            --format=html \
-                            --report-file=${SNYK_REPORT_FILE} || true
+
+                        echo "[INFO] Envoi du projet à Snyk Monitor..."
+                        ./snyk monitor --file=${SNYK_TARGET_FILE} --project-name=${APP_NAME} || true
+
+                        echo "[INFO] Analyse envoyée. Consulter sur : https://app.snyk.io/org/simbienvenuehoulboumi/projects"
                     '''
                 }
+            }
+        }
+        stage('🛡️ Rapport Snyk') {
+            steps {
+                sh '''
+                    echo "[INFO] Génération du rapport Snyk..."
+                    ./snyk test --file=${SNYK_TARGET_FILE} --severity-threshold=${SNYK_SEVERITY} --all-projects --json > ${SNYK_REPORT_FILE}
+                    echo "[INFO] Rapport généré : ${SNYK_REPORT_FILE}"
+                '''
+                archiveArtifacts artifacts: "${SNYK_REPORT_FILE}", fingerprint: true
             }
         }
 
