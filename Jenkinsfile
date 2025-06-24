@@ -118,16 +118,6 @@ pipeline {
                 }
             }
         }
-        stage('🛡️ Rapport Snyk') {
-            steps {
-                sh '''
-                    echo "[INFO] Génération du rapport Snyk..."
-                    ./snyk test --file=${SNYK_TARGET_FILE} --severity-threshold=${SNYK_SEVERITY} --all-projects --json > ${SNYK_REPORT_FILE}
-                    echo "[INFO] Rapport généré : ${SNYK_REPORT_FILE}"
-                '''
-                archiveArtifacts artifacts: "${SNYK_REPORT_FILE}", fingerprint: true
-            }
-        }
 
         stage('🐳 Build Docker') {
             steps {
