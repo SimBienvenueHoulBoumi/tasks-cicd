@@ -1,60 +1,56 @@
 pipeline {
     agent { label 'jenkins-agent' }
 
+    // Étape 1 : Configuration des outils
     tools {
-        jdk 'jdk'
-        maven 'maven'
+        jdk 'jdk'         // Doit être défini dans Jenkins (Manage Jenkins > Global Tool Configuration)
+        maven 'maven'     // Doit être défini dans Jenkins
     }
 
+    // Étape 2 : Options générales du pipeline
     options {
-        timestamps()
-        skipDefaultCheckout(false)
-        buildDiscarder(logRotator(numToKeepStr: '5'))
-        timeout(time: 30, unit: 'MINUTES')
+        timestamps()                      // Ajoute l'heure dans les logs
+        skipDefaultCheckout(true)         // On gère manuellement le checkout
+        buildDiscarder(logRotator(numToKeepStr: '5')) // Garde les 5 derniers builds
+        timeout(time: 30, unit: 'MINUTES') // Timeout global du job
     }
 
+    // Étape 3 : Variables d'environnement globales
     environment {
         APP_NAME                 = 'tasks-cicd'
+        IMAGE_TAG               = "${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_FULL              = "${HOST}:${NEXUS_PORT_DOCKER}/${APP_NAME}:${BUILD_NUMBER}"
 
-        IMAGE_TAG                = "${APP_NAME}:${BUILD_NUMBER}"
-        IMAGE_FULL               = "${HOST}:${NEXUS_PORT_DOCKER}/${APP_NAME}:${BUILD_NUMBER}"
+        TRIVY_IMAGE             = 'aquasec/trivy:latest'
+        TRIVY_REPORT_DIR        = 'trivy-reports'
+        TRIVY_SEVERITY          = 'CRITICAL,HIGH'
+        TRIVY_OUTPUT_FS         = '/root/reports/trivy-fs-report.json'
+        TRIVY_OUTPUT_IMAGE      = '/root/reports/trivy-image-report.json'
 
-        TRIVY_IMAGE              = 'aquasec/trivy:latest'
-        TRIVY_REPORT_DIR         = 'trivy-reports'
-        TRIVY_SEVERITY           = 'CRITICAL,HIGH'
-        TRIVY_OUTPUT_FS          = '/root/reports/trivy-fs-report.json'
-        TRIVY_OUTPUT_IMAGE       = '/root/reports/trivy-image-report.json'
-
-       // NEXUS_HOST               = 'localhost'
-       //  NEXUS_PORT               = '8081'
-       //  NEXUS_PORT_DOCKER        = '8085'
-       //  NEXUS_URL                = "http://${NEXUS_HOST}:${NEXUS_PORT}"
-       //  NEXUS_REPO               = 'docker-hosted'
-       //  NEXUS_CREDENTIALS_ID     = 'NEXUS-CREDENTIAL'
-
-        SNYK_PROJET              = 'snyk-macos'
+        SNYK_PROJET             = 'snyk-macos'
         SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'
-        SNYK_PLATEFORM_PROJECT   = "https://static.snyk.io/cli/latest/${SNYK_PROJET}"
-        SNYK_SEVERITY            = 'high'
-        SNYK_TARGET_FILE         = 'pom.xml'
-        SNYK_REPORT_FILE         = 'snyk_report.html'
+        SNYK_PLATEFORM_PROJECT  = "https://static.snyk.io/cli/latest/${SNYK_PROJET}"
+        SNYK_SEVERITY           = 'high'
+        SNYK_TARGET_FILE        = 'pom.xml'
+        SNYK_REPORT_FILE        = 'snyk_report.html'
     }
 
-    stage('📥 Checkout personnalisé') {
-        steps {
-            checkout([$class: 'GitSCM',
-            branches: [[name: '*/main']],
-            userRemoteConfigs: [[
-                url: 'git@github.com:simbienvenuehoulboumi/tasks-cicd.git',
-                credentialsId: 'GITHUB-TOKEN'
-            ]]
-            ])
-        }
-    }
-
-
+    // Étape 4 : Phases (stages)
     stages {
-        stage('🔧 Maven Wrapper') {
+
+        stage('📥 1. Checkout Git') {
+            steps {
+                checkout([$class: 'GitSCM',
+                  branches: [[name: '*/main']], // Branche cible
+                  userRemoteConfigs: [[
+                    url: 'git@github.com:simbienvenuehoulboumi/tasks-cicd.git',
+                    credentialsId: 'GITHUB-TOKEN'
+                  ]]
+                ])
+            }
+        }
+
+        stage('🔧 2. Maven Wrapper') {
             steps {
                 sh '''
                     if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
@@ -67,7 +63,7 @@ pipeline {
             }
         }
 
-        stage('🔧 Compilation + Package') {
+        stage('🏗️ 3. Compile & Package') {
             steps {
                 sh './mvnw clean package'
             }
@@ -78,7 +74,7 @@ pipeline {
             }
         }
 
-        stage('🔨 Build & Tests') {
+        stage('🧪 4. Tests unitaires') {
             steps {
                 sh './mvnw clean verify'
             }
@@ -89,40 +85,30 @@ pipeline {
             }
         }
 
-        stage('🧹 Checkstyle') {
+        stage('🧹 5. Checkstyle') {
             steps {
                 sh './mvnw checkstyle:checkstyle'
             }
         }
 
-        stage('🛡️ Analyse Snyk') {
+        stage('🛡️ 6. Analyse Snyk') {
             steps {
                 withCredentials([string(credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", variable: 'SNYK_TOKEN')]) {
                     sh '''
-                        echo "[INFO] Téléchargement de Snyk CLI..."
                         curl -Lo snyk ${SNYK_PLATEFORM_PROJECT}
                         chmod +x snyk
-
-                        echo "[INFO] Authentification avec le token..."
                         ./snyk auth "$SNYK_TOKEN"
-
-                        echo "[INFO] Envoi du projet à Snyk Monitor..."
                         ./snyk monitor --file=${SNYK_TARGET_FILE} --project-name=${APP_NAME} || true
-
-                        echo "[INFO] Analyse envoyée. Consulter sur : https://app.snyk.io/org/simbienvenuehoulboumi/projects"
                     '''
                 }
             }
         }
 
-        stage('🔧 Préparation de l’image Docker et 🐳 Build Image Docker') {
+        stage('🐳 7. Build Image Docker') {
             steps {
                 script {
-                    def dockerfile = 'Dockerfile'
-                    if (!fileExists(dockerfile)) {
-                        error "❌ Le fichier ${dockerfile} est manquant. Veuillez vérifier votre dépôt."
-                    } else {
-                        echo "✅ Fichier ${dockerfile} trouvé. Début de la construction de l'image Docker..."
+                    if (!fileExists('Dockerfile')) {
+                        error "❌ Fichier Dockerfile manquant"
                     }
                 }
 
@@ -133,13 +119,10 @@ pipeline {
             }
         }
 
-        stage('🔍 Trivy - Analyse Code') {
+        stage('🔍 8. Trivy - Scan code') {
             steps {
                 sh '''
-                    echo "📂 Création du dossier de rapports Trivy..."
                     mkdir -p ${TRIVY_REPORT_DIR}
-
-                    echo "🔍 Analyse de la base de code avec Trivy..."
                     docker run --rm \
                         -v $(pwd):/project \
                         -v $(pwd)/${TRIVY_REPORT_DIR}:/root/reports \
@@ -152,13 +135,10 @@ pipeline {
             }
         }
 
-        stage('🔍 Trivy - Analyse Image') {
+        stage('🔍 9. Trivy - Scan image Docker') {
             steps {
                 sh '''
-                    echo "🧹 Nettoyage du cache Java de Trivy (évite les erreurs context deadline)..."
                     docker run --rm ${TRIVY_IMAGE} clean --java-db
-
-                    echo "🔍 Analyse de l'image Docker avec Trivy..."
                     docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
                         -v $(pwd)/${TRIVY_REPORT_DIR}:/root/reports \
@@ -171,9 +151,10 @@ pipeline {
                 '''
             }
         }
-       // ✅ Publication avenir des logs vers ELK (ElasticSearch, Logstash, Kibana)
-/*
-        stage('📦 Push vers Nexus') {
+
+        // Optional: publication vers Nexus
+        /*
+        stage('📦 10. Push vers Nexus') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "${NEXUS_CREDENTIALS_ID}",
@@ -189,8 +170,9 @@ pipeline {
                 }
             }
         }
-*/
-        stage('🧹 Nettoyage') {
+        */
+
+        stage('🧹 11. Nettoyage') {
             steps {
                 sh '''
                     docker rmi $IMAGE_TAG || true
@@ -200,6 +182,7 @@ pipeline {
         }
     }
 
+    // Étape 5 : Actions globales post-build
     post {
         success {
             echo '✅ Pipeline terminé avec succès.'
