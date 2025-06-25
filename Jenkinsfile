@@ -1,25 +1,28 @@
+// Pipeline Jenkins complet avec documentation étape par étape
 pipeline {
     agent { label 'jenkins-agent' }
 
-    // Étape 1 : Configuration des outils
+    // [1] Configuration des outils
     tools {
-        jdk 'jdk'         // Doit être défini dans Jenkins (Manage Jenkins > Global Tool Configuration)
-        maven 'maven'     // Doit être défini dans Jenkins
+        jdk 'jdk'                     // JDK défini dans Jenkins (Global Tool Configuration)
+        maven 'maven'                 // Maven défini dans Jenkins
     }
 
-    // Étape 2 : Options générales du pipeline
+    // [2] Options globales du pipeline
     options {
-        timestamps()                      // Ajoute l'heure dans les logs
-        skipDefaultCheckout(true)         // On gère manuellement le checkout
+        timestamps()                                 // Affiche les horodatages dans les logs
+        skipDefaultCheckout(true)                    // On gère le checkout manuellement
         buildDiscarder(logRotator(numToKeepStr: '5')) // Garde les 5 derniers builds
-        timeout(time: 30, unit: 'MINUTES') // Timeout global du job
+        timeout(time: 30, unit: 'MINUTES')            // Timeout global du pipeline
     }
 
-    // Étape 3 : Variables d'environnement globales
+    // [3] Variables d'environnement globales
     environment {
         APP_NAME                 = 'tasks-cicd'
         IMAGE_TAG               = "${APP_NAME}:${BUILD_NUMBER}"
-        IMAGE_FULL              = "${HOST}:${NEXUS_PORT_DOCKER}/${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_NAME              = 'simdev'
+        NEXUS_URL               = 'localhost:8082'      // URL du registre Nexus Docker
+        IMAGE_FULL              = "${NEXUS_URL}/${IMAGE_NAME}:${BUILD_NUMBER}"
 
         TRIVY_IMAGE             = 'aquasec/trivy:latest'
         TRIVY_REPORT_DIR        = 'trivy-reports'
@@ -33,25 +36,26 @@ pipeline {
         SNYK_SEVERITY           = 'high'
         SNYK_TARGET_FILE        = 'pom.xml'
         SNYK_REPORT_FILE        = 'snyk_report.html'
-
     }
 
-    // Étape 4 : Phases (stages)
+    // [4] Étapes du pipeline
     stages {
 
-        stage('📥 1. Checkout Git') {
+        // [4.1] Récupération du code source depuis GitHub
+        stage('📥 [ 1 ]. Checkout Git') {
             steps {
                 checkout([$class: 'GitSCM',
-                  branches: [[name: 'main']], // Branche cible
-                  userRemoteConfigs: [[
-                    url: 'git@github.com:simbienvenuehoulboumi/tasks-cicd.git',
-                    credentialsId: 'GITHUB-TOKEN'
-                  ]]
+                    branches: [[name: 'main']],
+                    userRemoteConfigs: [[
+                        url: 'git@github.com:simbienvenuehoulboumi/tasks-cicd.git',
+                        credentialsId: 'GITHUB-TOKEN'
+                    ]]
                 ])
             }
         }
 
-        stage('🔧 2. Maven Wrapper') {
+        // [4.2] Génération du wrapper Maven si absent
+        stage('🔧 [ 2 ]. Maven Wrapper') {
             steps {
                 sh '''
                     if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
@@ -64,7 +68,8 @@ pipeline {
             }
         }
 
-        stage('🏗️ 3. Compile & Package') {
+        // [4.3] Compilation et packaging du projet Java
+        stage('🏗️ [ 3 ]. Compile & Package') {
             steps {
                 sh './mvnw clean package'
             }
@@ -75,7 +80,8 @@ pipeline {
             }
         }
 
-        stage('🧪 4. Tests unitaires') {
+        // [4.4] Exécution des tests unitaires
+        stage('🧪 [ 4 ]. Tests unitaires') {
             steps {
                 sh './mvnw clean verify'
             }
@@ -86,15 +92,17 @@ pipeline {
             }
         }
 
-        stage('🧹 5. Checkstyle') {
+        // [4.5] Analyse de code avec Checkstyle
+        stage('🧹 [ 5 ]. Checkstyle') {
             steps {
                 sh './mvnw checkstyle:checkstyle'
             }
         }
 
-        stage('🛡️ 6. Analyse Snyk') {
+        // [4.6] Analyse de sécurité avec Snyk
+        stage('🛡️ [ 6 ]. Analyse Snyk') {
             steps {
-                withCredentials([string(credentialsId: "${SNYK_TOKEN_CREDENTIAL_ID}", variable: 'SNYK_TOKEN')]) {
+                withCredentials([string(credentialsId: env.SNYK_TOKEN_CREDENTIAL_ID, variable: 'SNYK_TOKEN')]) {
                     sh '''
                         curl -Lo snyk ${SNYK_PLATEFORM_PROJECT}
                         chmod +x snyk
@@ -105,7 +113,8 @@ pipeline {
             }
         }
 
-        stage('🐳 7. Build Image Docker') {
+        // [4.7] Construction de l'image Docker
+        stage('🐳 [ 7 ]. Build Image Docker') {
             steps {
                 script {
                     if (!fileExists('Dockerfile')) {
@@ -120,7 +129,8 @@ pipeline {
             }
         }
 
-        stage('🔍 8. Trivy - Scan code') {
+        // [4.8] Scan de sécurité du code source avec Trivy
+        stage('🔍 [ 9 ]. Trivy - Scan code') {
             steps {
                 sh '''
                     mkdir -p ${TRIVY_REPORT_DIR}
@@ -136,7 +146,8 @@ pipeline {
             }
         }
 
-        stage('🔍 9. Trivy - Scan image Docker') {
+        // [4.9] Scan de sécurité de l'image Docker avec Trivy
+        stage('🔍 [ 10 ]. Trivy - Scan image Docker') {
             steps {
                 sh '''
                     docker run --rm ${TRIVY_IMAGE} clean --java-db
@@ -153,27 +164,25 @@ pipeline {
             }
         }
 
-        stage('📦 10. Push vers Nexus') {
-            stage('📦 10. Push vers Nexus') {
-                steps {
-                    withCredentials([usernamePassword(
-                        credentialsId: 'NEXUS_CREDENTIALS',
-                        usernameVariable: 'USER',
-                        passwordVariable: 'PASS'
-                    )]) {
-                        sh '''
-                            IMAGE_NAME=simdev
-                            FULL_IMAGE_TAG=$NEXUS_URL/$IMAGE_NAME:$IMAGE_TAG
-
-                            echo "$PASS" | docker login $NEXUS_URL -u "$USER" --password-stdin
-                            docker tag $IMAGE_TAG $FULL_IMAGE_TAG
-                            docker push $FULL_IMAGE_TAG
-                            docker logout $NEXUS_URL
-                        '''
-                    }
+        // [4.10] Publication de l'image sur Nexus
+        stage('📦 [11]. Push vers Nexus') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'NEXUS_CREDENTIALS',
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh '''
+                        echo "$PASS" | docker login $NEXUS_URL -u "$USER" --password-stdin
+                        docker tag $IMAGE_TAG $IMAGE_FULL
+                        docker push $IMAGE_FULL
+                        docker logout $NEXUS_URL
+                    '''
                 }
+            }
         }
 
+        // [4.11] Nettoyage des images et cache Docker
         stage('🧹 11. Nettoyage') {
             steps {
                 sh '''
@@ -183,9 +192,8 @@ pipeline {
             }
         }
     }
-}
 
-    // Étape 5 : Actions globales post-build
+    // [5] Actions post-build
     post {
         success {
             echo '✅ Pipeline terminé avec succès.'
