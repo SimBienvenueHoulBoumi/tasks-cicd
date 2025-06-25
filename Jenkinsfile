@@ -20,7 +20,7 @@ pipeline {
     environment {
         APP_NAME                = 'tasks-cicd'
         IMAGE_TAG               = "${APP_NAME}:${BUILD_NUMBER}"
-        IMAGE_NAME              = 'simdev'
+        IMAGE_NAME              = 'task-rest-api'
         NEXUS_URL               = 'localhost:8082'      // URL du registre Nexus Docker
         IMAGE_FULL              = "${NEXUS_URL}/${IMAGE_NAME}:${BUILD_NUMBER}"
 
@@ -183,7 +183,7 @@ pipeline {
         }
 
         // [4.11] Nettoyage des images et cache Docker
-        stage('🧹 11. Nettoyage') {
+        stage('🧹 [12]. Nettoyage') {
             steps {
                 sh '''
                     docker rmi $IMAGE_TAG || true
