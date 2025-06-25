@@ -33,6 +33,7 @@ pipeline {
         SNYK_SEVERITY           = 'high'
         SNYK_TARGET_FILE        = 'pom.xml'
         SNYK_REPORT_FILE        = 'snyk_report.html'
+
     }
 
     // Étape 4 : Phases (stages)
@@ -153,25 +154,24 @@ pipeline {
         }
 
         stage('📦 10. Push vers Nexus') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: "${NEXUS_CREDENTIALS_ID}",
-                    usernameVariable: 'USER',
-                    passwordVariable: 'PASS'
-                )]) {
-                    sh '''
-                        # Nexus URL ex: localhost:8082
-                        REGISTRY=${NEXUS_URL}
-                        IMAGE_NAME=simdev
-                        FULL_IMAGE_TAG=$REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+            stage('📦 10. Push vers Nexus') {
+                steps {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'NEXUS_CREDENTIALS',
+                        usernameVariable: 'USER',
+                        passwordVariable: 'PASS'
+                    )]) {
+                        sh '''
+                            IMAGE_NAME=simdev
+                            FULL_IMAGE_TAG=$NEXUS_URL/$IMAGE_NAME:$IMAGE_TAG
 
-                        echo "$PASS" | docker login $REGISTRY -u "$USER" --password-stdin
-                        docker tag $IMAGE_TAG $FULL_IMAGE_TAG
-                        docker push $FULL_IMAGE_TAG
-                        docker logout $REGISTRY
-                    '''
+                            echo "$PASS" | docker login $NEXUS_URL -u "$USER" --password-stdin
+                            docker tag $IMAGE_TAG $FULL_IMAGE_TAG
+                            docker push $FULL_IMAGE_TAG
+                            docker logout $NEXUS_URL
+                        '''
+                    }
                 }
-            }
         }
 
         stage('🧹 11. Nettoyage') {
@@ -183,6 +183,7 @@ pipeline {
             }
         }
     }
+}
 
     // Étape 5 : Actions globales post-build
     post {
