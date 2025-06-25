@@ -152,8 +152,6 @@ pipeline {
             }
         }
 
-        // Optional: publication vers Nexus
-        /*
         stage('📦 10. Push vers Nexus') {
             steps {
                 withCredentials([usernamePassword(
@@ -162,15 +160,19 @@ pipeline {
                     passwordVariable: 'PASS'
                 )]) {
                     sh '''
-                        echo $PASS | docker login ${NEXUS_URL} -u $USER --password-stdin
-                        docker tag $IMAGE_TAG $IMAGE_FULL
-                        docker push $IMAGE_FULL
-                        docker logout ${NEXUS_URL}
+                        # Nexus URL ex: localhost:8082
+                        REGISTRY=${NEXUS_URL}
+                        IMAGE_NAME=simdev
+                        FULL_IMAGE_TAG=$REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+                        echo "$PASS" | docker login $REGISTRY -u "$USER" --password-stdin
+                        docker tag $IMAGE_TAG $FULL_IMAGE_TAG
+                        docker push $FULL_IMAGE_TAG
+                        docker logout $REGISTRY
                     '''
                 }
             }
         }
-        */
 
         stage('🧹 11. Nettoyage') {
             steps {
