@@ -18,7 +18,7 @@ pipeline {
 
     // [3] Variables d'environnement globales
     environment {
-        APP_NAME                 = 'tasks-cicd'
+        APP_NAME                = 'tasks-cicd'
         IMAGE_TAG               = "${APP_NAME}:${BUILD_NUMBER}"
         IMAGE_NAME              = 'simdev'
         NEXUS_URL               = 'localhost:8082'      // URL du registre Nexus Docker
