@@ -36,6 +36,8 @@ pipeline {
         SNYK_SEVERITY           = 'high'
         SNYK_TARGET_FILE        = 'pom.xml'
         SNYK_REPORT_FILE        = 'snyk_report.html'
+    
+        SONARSCANNER            = 'sonarScanner'
     }
 
     // [4] Étapes du pipeline
@@ -99,18 +101,38 @@ pipeline {
             }
         }
 
+         stage('📊 SonarQube Analysis') {
+            environment {
+                scannerHome = tool "${SONARSCANNER}" // 🛠️ Récupère le chemin d’installation du scanner
+            }
+            steps {
+                withSonarQubeEnv("${SONARSERVER}") {
+                    sh """${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectKey=demo-rest-api \
+                        -Dsonar.projectName=demo-rest-api \
+                        -Dsonar.projectVersion=0.0.1 \
+                        -Dsonar.sources=src/ \
+                        -Dsonar.java.binaries=target/test-classes/simdev/demo/services \
+                        -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                        -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                        -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml"""
+                }
+            }
+        }
+
         // [4.6] Analyse de sécurité avec Snyk
         stage('🛡️ [ 6 ]. Analyse Snyk') {
             steps {
-                withCredentials([string(credentialsId: env.SNYK_TOKEN_CREDENTIAL_ID, variable: 'SNYK_TOKEN')]) {
-                    sh '''
-                        curl -Lo snyk ${SNYK_PLATEFORM_PROJECT}
-                        chmod +x snyk
-                        ./snyk auth "$SNYK_TOKEN"
-                        ./snyk monitor --file=${SNYK_TARGET_FILE} --project-name=${APP_NAME} || true
-                    '''
-                }
-            }
+                snykSecurity (
+                    severity: 'high',                         // 🚨 Niveau de menace minimum : high, medium, low
+                    snykInstallation: "${SNYK}",              // 🔧 Nom défini dans Jenkins pour Snyk CLI
+                    snykTokenId: 'snyk-token',                // 🔑 ID de la clé d'API Snyk (stockée dans Jenkins Credentials)
+                    targetFile: 'pom.xml',                    // 📄 Fichier principal pour Maven
+                    monitorProjectOnBuild: true,              // 📡 Envoi automatique des résultats sur Snyk.io
+                    failOnIssues: true,                       // ❌ Échoue le pipeline en cas de vulnérabilités
+                    additionalArguments: '--report --format=html --report-file=snyk_report.html' // 📃 Génère un rapport HTML
+                ) 
+            } 
         }
 
         // [4.7] Construction de l'image Docker
