@@ -41,14 +41,21 @@ pipeline {
     }
 
     stages {
-        
-        stage('Debug SSH') {
+
+        stage('Setup SSH Wrapper') {
             steps {
-                sh 'ssh -T git@github.com || true'
-                sh 'cat ~/.ssh/known_hosts'
+                sh '''
+                    mkdir -p .ssh
+                    cp ~/.ssh/id_ed25519 .ssh/id_ed25519
+                    cp ~/.ssh/known_hosts .ssh/known_hosts
+                    chmod 600 .ssh/id_ed25519
+                    echo '#!/bin/sh' > ssh-wrapper.sh
+                    echo 'exec ssh -o StrictHostKeyChecking=yes -i .ssh/id_ed25519 "$@"' >> ssh-wrapper.sh
+                    chmod +x ssh-wrapper.sh
+                '''
             }
         }
-
+        
         stage('Checkout') {
             steps {
                 checkout([$class: 'GitSCM',
