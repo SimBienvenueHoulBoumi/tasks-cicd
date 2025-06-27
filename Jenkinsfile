@@ -37,36 +37,23 @@ pipeline {
         SONARTOKEN         = 'SONARTOKEN'
 
         GITHUB_URL         = 'git@github.com:simbienvenuehoulboumi/tasks-cicd.git'
-        GITHUB_CREDENTIALS_ID = 'GITHUB-TOKEN'
+        GITHUB_CREDENTIALS_ID = 'GITHUB-SSH-KEY'
     }
 
     stages {
 
-        stage('Setup SSH Wrapper') {
-            steps {
-                sh '''
-                    mkdir -p .ssh
-                    cp ~/.ssh/id_ed25519 .ssh/id_ed25519
-                    cp ~/.ssh/known_hosts .ssh/known_hosts
-                    chmod 600 .ssh/id_ed25519
-                    echo '#!/bin/sh' > ssh-wrapper.sh
-                    echo 'exec ssh -o StrictHostKeyChecking=yes -i .ssh/id_ed25519 "$@"' >> ssh-wrapper.sh
-                    chmod +x ssh-wrapper.sh
-                '''
-            }
-        }
-        
         stage('Checkout') {
             steps {
                 checkout([$class: 'GitSCM',
                     branches: [[name: 'main']],
                     userRemoteConfigs: [[
-                        url: "${GITHUB_URL}",
-                        credentialsId: "${GITHUB_CREDENTIALS_ID}"
+                        url: "git@github.com:simbienvenuehoulboumi/tasks-cicd.git",
+                        credentialsId: "GITHUB-SSH-KEY"
                     ]]
                 ])
             }
         }
+
 
         stage('Ensure Maven Wrapper') {
             steps {
