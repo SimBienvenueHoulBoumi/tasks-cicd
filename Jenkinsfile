@@ -113,15 +113,15 @@ pipeline {
                 // Analyse statique avec SonarQube
                 withSonarQubeEnv('sonarserver') {
                     sh """
-                        ${scannerHome}/bin/sonar-scanner \
-                        -Dsonar.projectKey=${PROJET_NAME} \
-                        -Dsonar.projectName=${PROJET_NAME} \
-                        -Dsonar.projectVersion=${PROJET_VERSION} \
-                        -Dsonar.sources=src/ \
-                        -Dsonar.token=${SONARTOKEN} \
-                        -Dsonar.java.binaries=target/test-classes/${PROJET_SERVICE_PATH} \
-                        -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                        -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                        \${scannerHome}/bin/sonar-scanner \\
+                        -Dsonar.projectKey=\${PROJET_NAME} \\
+                        -Dsonar.projectName=\${PROJET_NAME} \\
+                        -Dsonar.projectVersion=\${PROJET_VERSION} \\
+                        -Dsonar.sources=src/ \\
+                        -Dsonar.token=\${SONARTOKEN} \\
+                        -Dsonar.java.binaries=target/test-classes/\${PROJET_SERVICE_PATH} \\
+                        -Dsonar.junit.reportsPath=target/surefire-reports/ \\
+                        -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \\
                         -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml
                     """
                 }
@@ -159,35 +159,35 @@ pipeline {
         stage('Trivy Source Scan') {
             steps {
                 // Scan de vulnérabilité du projet (fichiers sources)
-                sh '''
-                    mkdir -p $TRIVY_REPORT_DIR
-                    docker run --rm \
-                        -v $(pwd):/project \
-                        -v $(pwd)/$TRIVY_REPORT_DIR:/root/reports \
-                        ${TRIVY_IMAGE} fs /project \
-                        --exit-code 0 \
-                        --severity ${TRIVY_SEVERITY} \
-                        --format json \
-                        --output $TRIVY_OUTPUT_FS
-                '''
+                sh """
+                    mkdir -p \$TRIVY_REPORT_DIR
+                    docker run --rm \\
+                        -v \$(pwd):/project \\
+                        -v \$(pwd)/\$TRIVY_REPORT_DIR:/root/reports \\
+                        \$TRIVY_IMAGE fs /project \\
+                        --exit-code 0 \\
+                        --severity \$TRIVY_SEVERITY \\
+                        --format json \\
+                        --output \$TRIVY_OUTPUT_FS
+                """
             }
         }
 
         stage('Trivy Image Scan') {
             steps {
                 // Scan de vulnérabilité de l'image Docker construite
-                sh '''
-                    docker run --rm $TRIVY_IMAGE clean --java-db
-                    docker run --rm \
-                        -v /var/run/docker.sock:/var/run/docker.sock \
-                        -v $(pwd)/$TRIVY_REPORT_DIR:/root/reports \
-                        $TRIVY_IMAGE image $IMAGE_TAG \
-                        --timeout 10m \
-                        --exit-code 0 \
-                        --severity $TRIVY_SEVERITY \
-                        --format json \
-                        --output $TRIVY_OUTPUT_IMAGE
-                '''
+                sh """
+                    docker run --rm \$TRIVY_IMAGE clean --java-db
+                    docker run --rm \\
+                        -v /var/run/docker.sock:/var/run/docker.sock \\
+                        -v \$(pwd)/\$TRIVY_REPORT_DIR:/root/reports \\
+                        \$TRIVY_IMAGE image \$IMAGE_TAG \\
+                        --timeout 10m \\
+                        --exit-code 0 \\
+                        --severity \$TRIVY_SEVERITY \\
+                        --format json \\
+                        --output \$TRIVY_OUTPUT_IMAGE
+                """
             }
         }
 
@@ -199,12 +199,12 @@ pipeline {
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
-                    sh '''
-                        echo "$PASS" | docker login $NEXUS_URL -u "$USER" --password-stdin
-                        docker tag $IMAGE_TAG $IMAGE_FULL
-                        docker push $IMAGE_FULL
-                        docker logout $NEXUS_URL
-                    '''
+                    sh """
+                        echo "\$PASS" | docker login \$NEXUS_URL -u "\$USER" --password-stdin
+                        docker tag \$IMAGE_TAG \$IMAGE_FULL
+                        docker push \$IMAGE_FULL
+                        docker logout \$NEXUS_URL
+                    """
                 }
             }
         }
@@ -212,10 +212,10 @@ pipeline {
         stage('Cleanup') {
             steps {
                 // Nettoyage des images et cache
-                sh '''
-                    docker rmi $IMAGE_TAG || true
+                sh """
+                    docker rmi \$IMAGE_TAG || true
                     docker system prune -f
-                '''
+                """
             }
         }
     }
