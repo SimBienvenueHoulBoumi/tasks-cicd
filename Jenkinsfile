@@ -1,77 +1,78 @@
-// Pipeline Jenkins complet avec documentation étape par étape
 pipeline {
     agent { label 'jenkins-agent' }
 
-    // [1] Configuration des outils
     tools {
-        jdk 'jdk'                     // JDK défini dans Jenkins (Global Tool Configuration)
-        maven 'maven'                 // Maven défini dans Jenkins
+        jdk 'jdk'
+        maven 'maven'
     }
 
-    // [2] Options globales du pipeline
     options {
-        timestamps()                                 // Affiche les horodatages dans les logs
-        skipDefaultCheckout(true)                    // On gère le checkout manuellement
-        buildDiscarder(logRotator(numToKeepStr: '5')) // Garde les 5 derniers builds
-        timeout(time: 30, unit: 'MINUTES')            // Timeout global du pipeline
+        timestamps()
+        skipDefaultCheckout(true)
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+        timeout(time: 30, unit: 'MINUTES')
     }
 
-    // [3] Variables d'environnement globales
     environment {
-        APP_NAME                = 'tasks-cicd'
-        IMAGE_TAG               = "${APP_NAME}:${BUILD_NUMBER}"
-        IMAGE_NAME              = 'task-rest-api'
-        NEXUS_URL               = 'localhost:8082'      // URL du registre Nexus Docker
-        IMAGE_FULL              = "${NEXUS_URL}/${IMAGE_NAME}:${BUILD_NUMBER}"
+        APP_NAME           = 'tasks-cicd'
+        IMAGE_TAG          = "${APP_NAME}:${BUILD_NUMBER}"
+        PROJET_NAME        = 'task-rest-api'
+        NEXUS_URL          = 'localhost:8082'
+        IMAGE_FULL         = "${NEXUS_URL}/${PROJET_NAME}:${BUILD_NUMBER}"
+        PROJET_VERSION     = '0.0.1'
+        PROJET_SERVICE_PATH= 'simdev/demo/services'
 
-        TRIVY_IMAGE             = 'aquasec/trivy:latest'
-        TRIVY_REPORT_DIR        = 'trivy-reports'
-        TRIVY_SEVERITY          = 'CRITICAL,HIGH'
-        TRIVY_OUTPUT_FS         = '/root/reports/trivy-fs-report.json'
-        TRIVY_OUTPUT_IMAGE      = '/root/reports/trivy-image-report.json'
+        TRIVY_IMAGE        = 'aquasec/trivy:latest'
+        TRIVY_REPORT_DIR   = 'trivy-reports'
+        TRIVY_SEVERITY     = 'CRITICAL,HIGH'
+        TRIVY_OUTPUT_FS    = '/root/reports/trivy-fs-report.json'
+        TRIVY_OUTPUT_IMAGE = '/root/reports/trivy-image-report.json'
 
-        SNYK_PROJET             = 'snyk-macos'
-        SNYK_TOKEN_CREDENTIAL_ID = 'SNYK_AUTH_TOKEN'
-        SNYK_PLATEFORM_PROJECT  = "https://static.snyk.io/cli/latest/${SNYK_PROJET}"
-        SNYK_SEVERITY           = 'high'
-        SNYK_TARGET_FILE        = 'pom.xml'
-        SNYK_REPORT_FILE        = 'snyk_report.html'
-    
-        SONARSCANNER            = 'sonarScanner'
+        SNYK_JENKINS_NAME  = 'tasks' 
+        SNYK_TOKEN_ID      = 'SNYK-TOKEN'
+        SYNK_TARGET_FILE   = 'pom.xml'
+        SYNK_SEVERITY      = 'high'
+
+        SONARSCANNER       = 'sonarScanner'
+        SONARTOKEN         = 'SONARTOKEN'
+
+        GITHUB_URL         = 'git@github.com:simbienvenuehoulboumi/tasks-cicd.git'
+        GITHUB_CREDENTIALS_ID = 'GITHUB-TOKEN'
     }
 
-    // [4] Étapes du pipeline
     stages {
+        
+        stage('Debug SSH') {
+            steps {
+                sh 'ssh -T git@github.com || true'
+                sh 'cat ~/.ssh/known_hosts'
+            }
+        }
 
-        // [4.1] Récupération du code source depuis GitHub
-        stage('📥 [ 1 ]. Checkout Git') {
+        stage('Checkout') {
             steps {
                 checkout([$class: 'GitSCM',
                     branches: [[name: 'main']],
                     userRemoteConfigs: [[
-                        url: 'git@github.com:simbienvenuehoulboumi/tasks-cicd.git',
-                        credentialsId: 'GITHUB-TOKEN'
+                        url: "${GITHUB_URL}",
+                        credentialsId: "${GITHUB_CREDENTIALS_ID}"
                     ]]
                 ])
             }
         }
 
-        // [4.2] Génération du wrapper Maven si absent
-        stage('🔧 [ 2 ]. Maven Wrapper') {
+        stage('Ensure Maven Wrapper') {
             steps {
-                sh '''
+                sh """
                     if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
-                        echo "➡ Maven Wrapper manquant. Création..."
+                        echo "Creating Maven Wrapper..."
                         mvn -N io.takari:maven:wrapper
-                    else
-                        echo "✅ Maven Wrapper déjà présent."
                     fi
-                '''
+                """
             }
         }
 
-        // [4.3] Compilation et packaging du projet Java
-        stage('🏗️ [ 3 ]. Compile & Package') {
+        stage('Build') {
             steps {
                 sh './mvnw clean package'
             }
@@ -82,8 +83,7 @@ pipeline {
             }
         }
 
-        // [4.4] Exécution des tests unitaires
-        stage('🧪 [ 4 ]. Tests unitaires') {
+        stage('Unit Tests') {
             steps {
                 sh './mvnw clean verify'
             }
@@ -94,25 +94,25 @@ pipeline {
             }
         }
 
-        // [4.5] Analyse de code avec Checkstyle
-        stage('🧹 [ 5 ]. Checkstyle') {
+        stage('Checkstyle') {
             steps {
                 sh './mvnw checkstyle:checkstyle'
             }
         }
 
-         stage('📊 SonarQube Analysis') {
+        stage('SonarQube') {
             environment {
-                scannerHome = tool "${SONARSCANNER}" // 🛠️ Récupère le chemin d’installation du scanner
+                scannerHome = tool "${SONARSCANNER}"
             }
             steps {
-                withSonarQubeEnv("${SONARSERVER}") {
-                    sh """${scannerHome}/bin/sonar-scanner \
-                        -Dsonar.projectKey=demo-rest-api \
-                        -Dsonar.projectName=demo-rest-api \
-                        -Dsonar.projectVersion=0.0.1 \
+                withSonarQubeEnv('sonarserver') {
+                    sh """$scannerHome/bin/sonar-scanner \
+                        -Dsonar.projectKey=$PROJET_NAME \
+                        -Dsonar.projectName=$PROJET_NAME \
+                        -Dsonar.projectVersion=$PROJET_VERSION \
                         -Dsonar.sources=src/ \
-                        -Dsonar.java.binaries=target/test-classes/simdev/demo/services \
+                        -Dsonar.token=$SONARTOKEN \
+                        -Dsonar.java.binaries=target/test-classes/$PROJET_SERVICE_PATH \
                         -Dsonar.junit.reportsPath=target/surefire-reports/ \
                         -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
                         -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml"""
@@ -120,108 +120,97 @@ pipeline {
             }
         }
 
-        // [4.6] Analyse de sécurité avec Snyk
-        stage('🛡️ [ 6 ]. Analyse Snyk') {
+        stage('Snyk') {
             steps {
                 snykSecurity (
-                    severity: 'high',                         // 🚨 Niveau de menace minimum : high, medium, low
-                    snykInstallation: "${SNYK}",              // 🔧 Nom défini dans Jenkins pour Snyk CLI
-                    snykTokenId: 'snyk-token',                // 🔑 ID de la clé d'API Snyk (stockée dans Jenkins Credentials)
-                    targetFile: 'pom.xml',                    // 📄 Fichier principal pour Maven
-                    monitorProjectOnBuild: true,              // 📡 Envoi automatique des résultats sur Snyk.io
-                    failOnIssues: true,                       // ❌ Échoue le pipeline en cas de vulnérabilités
-                    additionalArguments: '--report --format=html --report-file=snyk_report.html' // 📃 Génère un rapport HTML
+                    severity: "${SYNK_SEVERITY}",
+                    snykInstallation: "${SNYK_JENKINS_NAME}",
+                    snykTokenId: "${SNYK_TOKEN_ID}",
+                    targetFile: "${SYNK_TARGET_FILE}",
+                    monitorProjectOnBuild: true,
+                    failOnIssues: true,
+                    additionalArguments: '--report --format=html --report-file=snyk_report.html'
                 ) 
             } 
         }
 
-        // [4.7] Construction de l'image Docker
-        stage('🐳 [ 7 ]. Build Image Docker') {
+        stage('Docker Build') {
             steps {
                 script {
                     if (!fileExists('Dockerfile')) {
-                        error "❌ Fichier Dockerfile manquant"
+                        error "Dockerfile is missing"
                     }
                 }
-
-                sh '''
-                    echo "🐳 Construction de l'image Docker..."
-                    docker build -t $IMAGE_TAG .
-                '''
+                sh 'docker build -t $IMAGE_TAG .'
             }
         }
 
-        // [4.8] Scan de sécurité du code source avec Trivy
-        stage('🔍 [ 9 ]. Trivy - Scan code') {
+        stage('Trivy Source Scan') {
             steps {
-                sh '''
-                    mkdir -p ${TRIVY_REPORT_DIR}
+                sh """
+                    mkdir -p $TRIVY_REPORT_DIR
                     docker run --rm \
                         -v $(pwd):/project \
-                        -v $(pwd)/${TRIVY_REPORT_DIR}:/root/reports \
+                        -v $(pwd)/$TRIVY_REPORT_DIR:/root/reports \
                         ${TRIVY_IMAGE} fs /project \
                         --exit-code 0 \
                         --severity ${TRIVY_SEVERITY} \
                         --format json \
-                        --output ${TRIVY_OUTPUT_FS}
-                '''
+                        --output $TRIVY_OUTPUT_FS
+                """
             }
         }
 
-        // [4.9] Scan de sécurité de l'image Docker avec Trivy
-        stage('🔍 [ 10 ]. Trivy - Scan image Docker') {
+        stage('Trivy Image Scan') {
             steps {
-                sh '''
-                    docker run --rm ${TRIVY_IMAGE} clean --java-db
+                sh """
+                    docker run --rm $TRIVY_IMAGE clean --java-db
                     docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
-                        -v $(pwd)/${TRIVY_REPORT_DIR}:/root/reports \
-                        ${TRIVY_IMAGE} image $IMAGE_TAG \
+                        -v $(pwd)/$TRIVY_REPORT_DIR:/root/reports \
+                        $TRIVY_IMAGE image $IMAGE_TAG \
                         --timeout 10m \
                         --exit-code 0 \
-                        --severity ${TRIVY_SEVERITY} \
+                        --severity $TRIVY_SEVERITY \
                         --format json \
-                        --output ${TRIVY_OUTPUT_IMAGE}
-                '''
+                        --output $TRIVY_OUTPUT_IMAGE
+                """
             }
         }
 
-        // [4.10] Publication de l'image sur Nexus
-        stage('📦 [11]. Push vers Nexus') {
+        stage('Push Docker to Nexus') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'NEXUS_CREDENTIALS',
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
-                    sh '''
+                    sh """
                         echo "$PASS" | docker login $NEXUS_URL -u "$USER" --password-stdin
                         docker tag $IMAGE_TAG $IMAGE_FULL
                         docker push $IMAGE_FULL
                         docker logout $NEXUS_URL
-                    '''
+                    """
                 }
             }
         }
 
-        // [4.11] Nettoyage des images et cache Docker
-        stage('🧹 [12]. Nettoyage') {
+        stage('Cleanup') {
             steps {
-                sh '''
+                sh """
                     docker rmi $IMAGE_TAG || true
                     docker system prune -f
-                '''
+                """
             }
         }
     }
 
-    // [5] Actions post-build
     post {
         success {
-            echo '✅ Pipeline terminé avec succès.'
+            echo '✅ Pipeline completed successfully.'
         }
         failure {
-            echo '❌ Échec du pipeline.'
+            echo '❌ Pipeline failed.'
         }
         always {
             cleanWs()
