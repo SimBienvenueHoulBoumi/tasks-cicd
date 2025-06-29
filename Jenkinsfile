@@ -122,20 +122,23 @@ pipeline {
         }
 
         stage('🔍 [SonarQube] Analyse de code + qualité') {
+            agent { label 'jenkins' } // ou "any" si tu es sur le master root Jenkins
             steps {
-                withSonarQubeEnv('sonarserver') {
-                    sh '''
-                        sonar-scanner \
-                            -Dsonar.projectKey=${PROJET_NAME} \
-                            -Dsonar.projectName=${PROJET_NAME} \
-                            -Dsonar.projectVersion=${PROJET_VERSION} \
-                            -Dsonar.sources=src/ \
-                            -Dsonar.token=${SONARTOKEN} \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                            -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
-                    '''
+                withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONARTOKEN')]) {
+                    withSonarQubeEnv('sonarserver') {
+                        sh '''
+                            sonar-scanner \
+                                -Dsonar.projectKey=${PROJET_NAME} \
+                                -Dsonar.projectName=${PROJET_NAME} \
+                                -Dsonar.projectVersion=${PROJET_VERSION} \
+                                -Dsonar.sources=src/ \
+                                -Dsonar.token=${SONARTOKEN} \
+                                -Dsonar.java.binaries=target/classes \
+                                -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                                -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                                -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
+                        '''
+                    }
                 }
             }
         }
