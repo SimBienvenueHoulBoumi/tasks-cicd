@@ -1,3 +1,25 @@
+// ---------------------------------------------------------------------------
+// ✅ Pipeline Jenkins complet basé sur un agent Docker Maven
+//    - Maven + JDK 17 + Docker in Docker
+//    - CI/CD complet avec SonarQube, Snyk, Trivy et Nexus
+//
+// 🔐 Credentials requis :
+//    - GITHUB-CREDENTIALS (type : Username/Password ou SSH selon usage)
+//    - SONARTOKEN (type : Secret Text)
+//    - SNYK_AUTH_TOKEN (type : Secret Text)
+//    - NEXUS_CREDENTIALS (type : Username/Password)
+//
+// ⚙️ Jenkins Plugins requis :
+//    - Docker Pipeline
+//    - Pipeline
+//    - Git
+//    - SonarQube Scanner for Jenkins
+//    - Snyk Security Plugin
+//    - HTML Publisher Plugin
+//
+// 📌 Remarque : le pipeline n’utilise pas d’agent global pour plus de souplesse
+// ---------------------------------------------------------------------------
+
 pipeline {
     agent none // ❌ Pas d'agent global : chaque stage aura son propre agent
 
@@ -196,15 +218,15 @@ pipeline {
             }
             steps {
                 sh """
-                    mkdir -p $TRIVY_REPORT_DIR
-                    docker run --rm \
-                        -v $(pwd):/project \
-                        -v $(pwd)/$TRIVY_REPORT_DIR:/root/reports \
-                        $TRIVY_IMAGE fs /project \
-                        --exit-code 0 \
-                        --severity $TRIVY_SEVERITY \
-                        --format json \
-                        --output $TRIVY_OUTPUT_FS
+                    mkdir -p \$TRIVY_REPORT_DIR
+                    docker run --rm \\
+                        -v \$(pwd):/project \\
+                        -v \$(pwd)/\$TRIVY_REPORT_DIR:/root/reports \\
+                        \$TRIVY_IMAGE fs /project \\
+                        --exit-code 0 \\
+                        --severity \$TRIVY_SEVERITY \\
+                        --format json \\
+                        --output \$TRIVY_OUTPUT_FS
                 """
             }
             post {
@@ -223,16 +245,16 @@ pipeline {
             }
             steps {
                 sh """
-                    docker run --rm $TRIVY_IMAGE clean --java-db
-                    docker run --rm \
-                        -v /var/run/docker.sock:/var/run/docker.sock \
-                        -v $(pwd)/$TRIVY_REPORT_DIR:/root/reports \
-                        $TRIVY_IMAGE image $IMAGE_TAG \
-                        --timeout 10m \
-                        --exit-code 0 \
-                        --severity $TRIVY_SEVERITY \
-                        --format json \
-                        --output $TRIVY_OUTPUT_IMAGE
+                    docker run --rm \$TRIVY_IMAGE clean --java-db
+                    docker run --rm \\
+                        -v /var/run/docker.sock:/var/run/docker.sock \\
+                        -v \$(pwd)/\$TRIVY_REPORT_DIR:/root/reports \\
+                        \$TRIVY_IMAGE image \$IMAGE_TAG \\
+                        --timeout 10m \\
+                        --exit-code 0 \\
+                        --severity \$TRIVY_SEVERITY \\
+                        --format json \\
+                        --output \$TRIVY_OUTPUT_IMAGE
                 """
             }
             post {
@@ -256,10 +278,10 @@ pipeline {
                     passwordVariable: 'PASS'
                 )]) {
                     sh """
-                        echo "$PASS" | docker login $NEXUS_URL -u "$USER" --password-stdin
-                        docker tag $IMAGE_TAG $IMAGE_FULL
-                        docker push $IMAGE_FULL
-                        docker logout $NEXUS_URL
+                        echo "\$PASS" | docker login \$NEXUS_URL -u "\$USER" --password-stdin
+                        docker tag \$IMAGE_TAG \$IMAGE_FULL
+                        docker push \$IMAGE_FULL
+                        docker logout \$NEXUS_URL
                     """
                 }
             }
@@ -274,7 +296,7 @@ pipeline {
             }
             steps {
                 sh """
-                    docker rmi $IMAGE_TAG || true
+                    docker rmi \$IMAGE_TAG || true
                     docker system prune -f
                 """
             }
