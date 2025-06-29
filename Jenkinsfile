@@ -25,6 +25,8 @@ pipeline {
         SNYK_TOKEN_ID       = 'SNYK_AUTH_TOKEN'
         SYNK_TARGET_FILE    = 'pom.xml'
         SYNK_SEVERITY       = 'high'
+
+        SONAR_URL           = 'http://sonarqube:9000'
     }
 
     stages {
@@ -131,6 +133,7 @@ pipeline {
                                 -Dsonar.projectKey=${PROJET_NAME} \
                                 -Dsonar.projectName=${PROJET_NAME} \
                                 -Dsonar.projectVersion=${PROJET_VERSION} \
+                                -Dsonar.host.url=${SONAR_URL} \
                                 -Dsonar.sources=src/ \
                                 -Dsonar.token=${SONARTOKEN} \
                                 -Dsonar.java.binaries=target/classes \
