@@ -122,7 +122,7 @@ pipeline {
             agent {
                 docker {
                     image 'sonarsource/sonar-scanner-cli:5'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock --network cicd'
+                    args '--entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock --network cicd'
                 }
             }
             steps {
