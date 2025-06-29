@@ -257,23 +257,24 @@ pipeline {
             echo '❌ Échec du pipeline.'
         }
         always {
-            // 🗂️ [HTML Reports] Publication des rapports lisibles dans Jenkins
-            publishHTML([
-                reportName : 'Snyk Report',
-                reportDir  : 'reports/snyk',
-                reportFiles: 'snyk_report.html',
-                keepAll    : true,
-                alwaysLinkToLastBuild: true
-            ])
-            publishHTML([
-                reportName : 'Trivy Scan',
-                reportDir  : 'reports/trivy',
-                reportFiles: 'trivy-fs-report.json',
-                keepAll    : true,
-                alwaysLinkToLastBuild: true,
-                allowMissing: true
-            ])
-            cleanWs()
-        }
+        // 🗂️ [HTML Reports] Publication des rapports lisibles dans Jenkins
+        publishHTML([
+            reportName : 'Snyk Report',
+            reportDir  : 'reports/snyk',
+            reportFiles: 'snyk_report.html',
+            keepAll    : true,
+            alwaysLinkToLastBuild: true,
+            allowMissing: true // ✅ Ajoute ceci ici
+        ])
+        publishHTML([
+            reportName : 'Trivy Scan',
+            reportDir  : 'reports/trivy',
+            reportFiles: 'trivy-fs-report.json',
+            keepAll    : true,
+            alwaysLinkToLastBuild: true,
+            allowMissing: true
+        ])
+        cleanWs()
     }
+  }
 }
