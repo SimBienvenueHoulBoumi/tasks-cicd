@@ -1,44 +1,7 @@
-// 1. Credentials
-//    - GITHUB-TOKEN        : Token ou clé SSH pour accéder à ton repo GitHub
-//    - SONARTOKEN          : Token d'authentification SonarQube (injection via variable d'environnement ou credentials String)
-//    - SNYK-TOKEN          : Token Snyk dans les Credentials (type : Secret Text)
-//    - NEXUS_CREDENTIALS   : Username/Password pour pousser les images sur Nexus (type : Username/Password)
-//
-// 2. Tools (facultatif avec l'agent docker maven, mais nécessaire si tu ne les embarques pas dans ton image Docker)
-//    - JDK : jdk (nom libre, mais correspond au label utilisé dans `tools {}` si utilisé)
-//    - Maven : maven
-//    - SonarQube Scanner : sonarScanner (si pas déjà embarqué dans ton image)
-//
-// 3. Configuration SonarQube (Manage Jenkins > Configure System)
-//    - Ajouter une instance SonarQube nommée `sonarserver`
-//
-// 4. Plugin Jenkins nécessaires :
-//    - Docker Pipeline
-//    - Pipeline
-//    - Git
-//    - Pipeline: GitHub
-//    - SonarQube Scanner for Jenkins
-//    - Snyk Security Plugin
-//    - HTML Publisher Plugin
-//
-
 pipeline {
-    agent {
-        docker {
-            image 'maven:3.9.6-eclipse-temurin-17' // [Agent] Image Docker avec Maven + JDK 17
-            args '-v /var/run/docker.sock:/var/run/docker.sock' // [Agent] Permet d’utiliser Docker dans l’agent
-        }
-    }
-
-    options {
-        timestamps() // [Options] Affiche les horodatages dans les logs
-        skipDefaultCheckout(true) // [Options] On fait le checkout manuellement
-        buildDiscarder(logRotator(numToKeepStr: '5')) // [Options] Garde uniquement les 5 derniers builds
-        timeout(time: 30, unit: 'MINUTES') // [Options] Timeout global du pipeline
-    }
+    agent none // ❌ Pas d'agent global : chaque stage aura son propre agent
 
     environment {
-        // [Environnement] Variables projet et outils
         APP_NAME            = 'tasks-cicd'
         IMAGE_TAG           = "${APP_NAME}:${BUILD_NUMBER}"
         PROJET_NAME         = 'task-rest-api'
@@ -58,13 +21,18 @@ pipeline {
         SYNK_TARGET_FILE    = 'pom.xml'
         SYNK_SEVERITY       = 'high'
 
-        SONARTOKEN          = 'SONARTOKEN'
         GITHUB_URL          = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GITHUB_CREDENTIALS_ID = 'GITHUB_CREDENTIALS_ID'
+        GITHUB_CREDENTIALS_ID = 'GITHUB-CREDENTIALS'
     }
 
     stages {
-        stage('📥 [Checkout] Récupération du code depuis GitHub') {
+        stage('📥 Checkout') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 checkout([$class: 'GitSCM',
                     branches: [[name: 'main']],
@@ -76,7 +44,13 @@ pipeline {
             }
         }
 
-        stage('🧰 [Maven Wrapper] Création si absent') {
+        stage('🧰 Maven Wrapper') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 sh '''
                     if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
@@ -87,7 +61,13 @@ pipeline {
             }
         }
 
-        stage('🏗️ [Build] Compilation Maven & Archive des JARs') {
+        stage('🏗️ Build & Archive') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 sh './mvnw clean package'
             }
@@ -98,7 +78,13 @@ pipeline {
             }
         }
 
-        stage('🧪 [Unit Tests]') {
+        stage('🧪 Unit Tests') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 sh './mvnw clean verify'
             }
@@ -109,7 +95,13 @@ pipeline {
             }
         }
 
-        stage('🧹 [Checkstyle] Analyse du style Java') {
+        stage('🧹 Checkstyle') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 sh './mvnw checkstyle:checkstyle'
                 sh 'mkdir -p reports && mv target/checkstyle-result.xml reports/'
@@ -121,8 +113,8 @@ pipeline {
             }
         }
 
-        stage('🔍 [SonarQube] Analyse de code + qualité') {
-            agent { any }
+        stage('🔍 SonarQube') {
+            agent any
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONARTOKEN')]) {
                     withSonarQubeEnv('sonarserver') {
@@ -143,7 +135,8 @@ pipeline {
             }
         }
 
-        stage(' ✅ [Quality Gate] Vérifie que le projet passe les critères Sonar') {
+        stage('✅ Quality Gate') {
+            agent any
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
@@ -151,7 +144,13 @@ pipeline {
             }
         }
 
-        stage('🛡️ [Snyk]') {
+        stage('🛡️ Snyk') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 sh 'mkdir -p reports/snyk'
                 snykSecurity (
@@ -171,7 +170,13 @@ pipeline {
             }
         }
 
-        stage('🐳 [Docker]  Build') {
+        stage('🐳 Docker Build') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 script {
                     if (!fileExists('Dockerfile')) {
@@ -182,18 +187,24 @@ pipeline {
             }
         }
 
-        stage('🔬 [Trivy Source] Scan') {
+        stage('🔬 Trivy Source') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 sh """
-                    mkdir -p \$TRIVY_REPORT_DIR
-                    docker run --rm \\
-                        -v \$(pwd):/project \\
-                        -v \$(pwd)/\$TRIVY_REPORT_DIR:/root/reports \\
-                        \$TRIVY_IMAGE fs /project \\
-                        --exit-code 0 \\
-                        --severity \$TRIVY_SEVERITY \\
-                        --format json \\
-                        --output \$TRIVY_OUTPUT_FS
+                    mkdir -p $TRIVY_REPORT_DIR
+                    docker run --rm \
+                        -v $(pwd):/project \
+                        -v $(pwd)/$TRIVY_REPORT_DIR:/root/reports \
+                        $TRIVY_IMAGE fs /project \
+                        --exit-code 0 \
+                        --severity $TRIVY_SEVERITY \
+                        --format json \
+                        --output $TRIVY_OUTPUT_FS
                 """
             }
             post {
@@ -203,19 +214,25 @@ pipeline {
             }
         }
 
-        stage('🖼️ [Trivy Image] Scan') {
+        stage('🖼️ Trivy Image') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 sh """
-                    docker run --rm \$TRIVY_IMAGE clean --java-db
-                    docker run --rm \\
-                        -v /var/run/docker.sock:/var/run/docker.sock \\
-                        -v \$(pwd)/\$TRIVY_REPORT_DIR:/root/reports \\
-                        \$TRIVY_IMAGE image \$IMAGE_TAG \\
-                        --timeout 10m \\
-                        --exit-code 0 \\
-                        --severity \$TRIVY_SEVERITY \\
-                        --format json \\
-                        --output \$TRIVY_OUTPUT_IMAGE
+                    docker run --rm $TRIVY_IMAGE clean --java-db
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v $(pwd)/$TRIVY_REPORT_DIR:/root/reports \
+                        $TRIVY_IMAGE image $IMAGE_TAG \
+                        --timeout 10m \
+                        --exit-code 0 \
+                        --severity $TRIVY_SEVERITY \
+                        --format json \
+                        --output $TRIVY_OUTPUT_IMAGE
                 """
             }
             post {
@@ -225,7 +242,13 @@ pipeline {
             }
         }
 
-        stage('📦 [Push] Push Docker to Nexus') {
+        stage('📦 Push Docker to Nexus') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'NEXUS_CREDENTIALS',
@@ -233,23 +256,52 @@ pipeline {
                     passwordVariable: 'PASS'
                 )]) {
                     sh """
-                        echo "\$PASS" | docker login \$NEXUS_URL -u "\$USER" --password-stdin
-                        docker tag \$IMAGE_TAG \$IMAGE_FULL
-                        docker push \$IMAGE_FULL
-                        docker logout \$NEXUS_URL
+                        echo "$PASS" | docker login $NEXUS_URL -u "$USER" --password-stdin
+                        docker tag $IMAGE_TAG $IMAGE_FULL
+                        docker push $IMAGE_FULL
+                        docker logout $NEXUS_URL
                     """
                 }
             }
         }
 
-        stage('🧹 [Cleanup] Clean image') {
+        stage('🧹 Cleanup') {
+            agent {
+                docker {
+                    image 'maven:3.9.6-eclipse-temurin-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
             steps {
                 sh """
-                    docker rmi \$IMAGE_TAG || true
+                    docker rmi $IMAGE_TAG || true
                     docker system prune -f
                 """
             }
         }
     }
 
+    post {
+        always {
+            script {
+                publishHTML([
+                    reportName : 'Snyk Report',
+                    reportDir  : 'reports/snyk',
+                    reportFiles: 'snyk_report.html',
+                    keepAll    : true,
+                    alwaysLinkToLastBuild: true,
+                    allowMissing: true
+                ])
+                publishHTML([
+                    reportName : 'Trivy Scan',
+                    reportDir  : 'reports/trivy',
+                    reportFiles: 'trivy-fs-report.json',
+                    keepAll    : true,
+                    alwaysLinkToLastBuild: true,
+                    allowMissing: true
+                ])
+                cleanWs()
+            }
+        }
+    }
 }
