@@ -305,7 +305,7 @@ pipeline {
 
     post {
         always {
-            node {
+            node(label: 'jenkins') {
                 publishHTML([
                     reportName : 'Snyk Report',
                     reportDir  : 'reports/snyk',
