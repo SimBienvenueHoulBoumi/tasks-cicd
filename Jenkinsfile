@@ -60,7 +60,7 @@ pipeline {
 
         SONARTOKEN          = 'SONARTOKEN'
         GITHUB_URL          = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GITHUB_CREDENTIALS_ID = 'GITHUB-CREDENTIALS'
+        GITHUB_CREDENTIALS_ID = 'GITHUB_CREDENTIALS_ID'
     }
 
     stages {
