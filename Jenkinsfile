@@ -305,7 +305,7 @@ pipeline {
 
     post {
         always {
-            script {
+            node {
                 publishHTML([
                     reportName : 'Snyk Report',
                     reportDir  : 'reports/snyk',
@@ -326,4 +326,5 @@ pipeline {
             }
         }
     }
+
 }
