@@ -122,7 +122,7 @@ pipeline {
         }
 
         stage('🔍 [SonarQube] Analyse de code + qualité') {
-            agent { label 'jenkins' } // ou "any" si tu es sur le master root Jenkins
+            agent { any }
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONARTOKEN')]) {
                     withSonarQubeEnv('sonarserver') {
