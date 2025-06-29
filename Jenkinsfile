@@ -1,35 +1,18 @@
-// ---------------------------------------------------------------------------
-// ✅ Pipeline Jenkins complet basé sur un agent Docker Maven
-//    - Maven + JDK 17 + Docker in Docker
-//    - CI/CD complet avec SonarQube, Snyk, Trivy et Nexus
-//
-// 🔐 Credentials requis :
-//    - GITHUB-CREDENTIALS (type : Username/Password ou SSH selon usage)
-//    - SONARTOKEN (type : Secret Text)
-//    - SNYK_AUTH_TOKEN (type : Secret Text)
-//    - NEXUS_CREDENTIALS (type : Username/Password)
-//
-// ⚙️ Jenkins Plugins requis :
-//    - Docker Pipeline
-//    - Pipeline
-//    - Git
-//    - SonarQube Scanner for Jenkins
-//    - Snyk Security Plugin
-//    - HTML Publisher Plugin
-//
-// 📌 Remarque : le pipeline n’utilise pas d’agent global pour plus de souplesse
-// ---------------------------------------------------------------------------
-
 pipeline {
-    agent none // ❌ Pas d'agent global : chaque stage aura son propre agent
+    agent none
 
     environment {
         APP_NAME            = 'tasks-cicd'
         IMAGE_TAG           = "${APP_NAME}:${BUILD_NUMBER}"
         PROJET_NAME         = 'task-rest-api'
+        PROJET_VERSION      = '0.0.1'
+
+        GITHUB_URL          = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
+
+        GITHUB_CREDENTIALS_ID = 'GITHUB-CREDENTIALS'
+
         NEXUS_URL           = 'nexus:8082'
         IMAGE_FULL          = "${NEXUS_URL}/${PROJET_NAME}:${BUILD_NUMBER}"
-        PROJET_VERSION      = '0.0.1'
 
         REPORT_DIR          = 'reports'
         TRIVY_REPORT_DIR    = "${REPORT_DIR}/trivy"
@@ -42,12 +25,10 @@ pipeline {
         SNYK_TOKEN_ID       = 'SNYK_AUTH_TOKEN'
         SYNK_TARGET_FILE    = 'pom.xml'
         SYNK_SEVERITY       = 'high'
-
-        GITHUB_URL          = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GITHUB_CREDENTIALS_ID = 'GITHUB-CREDENTIALS'
     }
 
     stages {
+
         stage('📥 Checkout') {
             agent {
                 docker {
@@ -245,11 +226,7 @@ pipeline {
             }
             steps {
                 sh """
-                    docker run --rm \$TRIVY_IMAGE clean --java-db
-                    docker run --rm \\
-                        -v /var/run/docker.sock:/var/run/docker.sock \\
-                        -v \$(pwd)/\$TRIVY_REPORT_DIR:/root/reports \\
-                        \$TRIVY_IMAGE image \$IMAGE_TAG \\
+                    docker run --rm \$TRIVY_IMAGE image \$IMAGE_TAG \\
                         --timeout 10m \\
                         --exit-code 0 \\
                         --severity \$TRIVY_SEVERITY \\
@@ -326,5 +303,4 @@ pipeline {
             }
         }
     }
-
 }
