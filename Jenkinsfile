@@ -1,5 +1,10 @@
 pipeline {
-    agent none
+    agent {
+        docker {
+        image 'maven:3.9.6-eclipse-temurin-17'
+        label 'jenkins-agent'
+        }
+    }
 
     environment {
         APP_NAME            = 'tasks-cicd'
@@ -288,26 +293,29 @@ pipeline {
         }
     }
 
-post {
-    always {
-        publishHTML([
-            reportName : 'Snyk Report',
-            reportDir  : 'reports/snyk',
-            reportFiles: 'snyk_report.html',
-            keepAll    : true,
-            alwaysLinkToLastBuild: true,
-            allowMissing: true
-        ])
-        publishHTML([
-            reportName : 'Trivy Scan',
-            reportDir  : 'reports/trivy',
-            reportFiles: 'trivy-fs-report.json',
-            keepAll    : true,
-            alwaysLinkToLastBuild: true,
-            allowMissing: true
-        ])
-        cleanWs()
+    post {
+        always {
+            node(label: 'jenkins') {
+                publishHTML([
+                    reportName : 'Snyk Report',
+                    reportDir  : 'reports/snyk',
+                    reportFiles: 'snyk_report.html',
+                    keepAll    : true,
+                    alwaysLinkToLastBuild: true,
+                    allowMissing: true
+                ])
+                publishHTML([
+                    reportName : 'Trivy Scan',
+                    reportDir  : 'reports/trivy',
+                    reportFiles: 'trivy-fs-report.json',
+                    keepAll    : true,
+                    alwaysLinkToLastBuild: true,
+                    allowMissing: true
+                ])
+                cleanWs()
+            }
+        }
     }
 }
 
-}
+
