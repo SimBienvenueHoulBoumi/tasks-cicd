@@ -54,13 +54,13 @@ pipeline {
         TRIVY_OUTPUT_IMAGE  = "/root/reports/trivy-image-report.json"
 
         SNYK_JENKINS_NAME   = 'tasks'
-        SNYK_TOKEN_ID       = 'SNYK-TOKEN'
+        SNYK_TOKEN_ID       = 'SNYK_AUTH_TOKEN'
         SYNK_TARGET_FILE    = 'pom.xml'
         SYNK_SEVERITY       = 'high'
 
         SONARTOKEN          = 'SONARTOKEN'
         GITHUB_URL          = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
-        GITHUB_CREDENTIALS_ID = 'GITHUB-TOKEN'
+        GITHUB_CREDENTIALS_ID = 'GITHUB-CREDENTIALS'
     }
 
     stages {
