@@ -1,55 +1,71 @@
-pipeline {
-    agent { label 'jenkins-agent' }
+// 1. Credentials
+//    - GITHUB-TOKEN        : Token ou clé SSH pour accéder à ton repo GitHub
+//    - SONARTOKEN          : Token d'authentification SonarQube (injection via variable d'environnement ou credentials String)
+//    - SNYK-TOKEN          : Token Snyk dans les Credentials (type : Secret Text)
+//    - NEXUS_CREDENTIALS   : Username/Password pour pousser les images sur Nexus (type : Username/Password)
+//
+// 2. Tools (facultatif avec l'agent docker maven, mais nécessaire si tu ne les embarques pas dans ton image Docker)
+//    - JDK : jdk (nom libre, mais correspond au label utilisé dans `tools {}` si utilisé)
+//    - Maven : maven
+//    - SonarQube Scanner : sonarScanner (si pas déjà embarqué dans ton image)
+//
+// 3. Configuration SonarQube (Manage Jenkins > Configure System)
+//    - Ajouter une instance SonarQube nommée `sonarserver`
+//
+// 4. Plugin Jenkins nécessaires :
+//    - Docker Pipeline
+//    - Pipeline
+//    - Git
+//    - Pipeline: GitHub
+//    - SonarQube Scanner for Jenkins
+//    - Snyk Security Plugin
+//    - HTML Publisher Plugin
+//
 
-    tools {
-        jdk 'jdk' // Utilise le JDK défini dans Jenkins (configuration globale)
-        maven 'maven' // Utilise Maven depuis les outils Jenkins
+pipeline {
+    agent {
+        docker {
+            image 'maven:3.9.6-eclipse-temurin-17' // [Agent] Image Docker avec Maven + JDK 17
+            args '-v /var/run/docker.sock:/var/run/docker.sock' // [Agent] Permet d’utiliser Docker dans l’agent
+        }
     }
 
     options {
-        timestamps() // Ajoute les horodatages aux logs de build
-        skipDefaultCheckout(true) // Évite le checkout automatique (géré manuellement plus bas)
-        buildDiscarder(logRotator(numToKeepStr: '5')) // Garde les 5 derniers builds uniquement
-        timeout(time: 30, unit: 'MINUTES') // Timeout global du pipeline à 30 minutes
+        timestamps() // [Options] Affiche les horodatages dans les logs
+        skipDefaultCheckout(true) // [Options] On fait le checkout manuellement
+        buildDiscarder(logRotator(numToKeepStr: '5')) // [Options] Garde uniquement les 5 derniers builds
+        timeout(time: 30, unit: 'MINUTES') // [Options] Timeout global du pipeline
     }
 
     environment {
-        // Variables de configuration du projet
-        APP_NAME           = 'tasks-cicd'
-        IMAGE_TAG          = "${APP_NAME}:${BUILD_NUMBER}"
-        PROJET_NAME        = 'task-rest-api'
-        NEXUS_URL          = 'localhost:8082'
-        IMAGE_FULL         = "${NEXUS_URL}/${PROJET_NAME}:${BUILD_NUMBER}"
-        PROJET_VERSION     = '0.0.1'
-        PROJET_SERVICE_PATH= 'simdev/demo/services'
+        // [Environnement] Variables projet et outils
+        APP_NAME            = 'tasks-cicd'
+        IMAGE_TAG           = "${APP_NAME}:${BUILD_NUMBER}"
+        PROJET_NAME         = 'task-rest-api'
+        NEXUS_URL           = 'nexus:8082'
+        IMAGE_FULL          = "${NEXUS_URL}/${PROJET_NAME}:${BUILD_NUMBER}"
+        PROJET_VERSION      = '0.0.1'
 
-        // Configuration Trivy pour scan de vulnérabilité
-        TRIVY_IMAGE        = 'aquasec/trivy:latest'
-        TRIVY_REPORT_DIR   = 'trivy-reports'
-        TRIVY_SEVERITY     = 'CRITICAL,HIGH'
-        TRIVY_OUTPUT_FS    = '/root/reports/trivy-fs-report.json'
-        TRIVY_OUTPUT_IMAGE = '/root/reports/trivy-image-report.json'
+        REPORT_DIR          = 'reports'
+        TRIVY_REPORT_DIR    = "${REPORT_DIR}/trivy"
+        TRIVY_IMAGE         = 'aquasec/trivy:latest'
+        TRIVY_SEVERITY      = 'CRITICAL,HIGH'
+        TRIVY_OUTPUT_FS     = "/root/reports/trivy-fs-report.json"
+        TRIVY_OUTPUT_IMAGE  = "/root/reports/trivy-image-report.json"
 
-        // Configuration Snyk pour analyse de sécurité
-        SNYK_JENKINS_NAME  = 'tasks'
-        SNYK_TOKEN_ID      = 'SNYK-TOKEN'
-        SYNK_TARGET_FILE   = 'pom.xml'
-        SYNK_SEVERITY      = 'high'
+        SNYK_JENKINS_NAME   = 'tasks'
+        SNYK_TOKEN_ID       = 'SNYK-TOKEN'
+        SYNK_TARGET_FILE    = 'pom.xml'
+        SYNK_SEVERITY       = 'high'
 
-        // Configuration SonarQube pour analyse de code
-        SONARSCANNER       = 'sonarScanner'
-        SONARTOKEN         = 'SONARTOKEN'
-
-        // Configuration GitHub
-        GITHUB_URL         = 'git@github.com:simbienvenuehoulboumi/tasks-cicd.git'
-        GITHUB_CREDENTIALS_ID = 'GITHUB-SSH-KEY'
+        SONARTOKEN          = 'SONARTOKEN'
+        GITHUB_URL          = 'https://github.com/SimBienvenueHoulBoumi/tasks-cicd.git'
+        GITHUB_CREDENTIALS_ID = 'GITHUB-TOKEN'
     }
 
     stages {
-
-        stage('Checkout') {
+        stage('📥 [Checkout] Récupération du code depuis GitHub') {
             steps {
-                // Récupération du code source depuis GitHub avec les credentials
                 checkout([$class: 'GitSCM',
                     branches: [[name: 'main']],
                     userRemoteConfigs: [[
@@ -60,9 +76,8 @@ pipeline {
             }
         }
 
-        stage('Ensure Maven Wrapper') {
+        stage('🧰 [Maven Wrapper] Création si absent') {
             steps {
-                // Création du wrapper Maven si absent
                 sh '''
                     if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
                         echo "Creating Maven Wrapper..."
@@ -72,65 +87,70 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('🏗️ [Build] Compilation Maven & Archive des JARs') {
             steps {
-                // Compilation du projet
                 sh './mvnw clean package'
             }
             post {
                 success {
-                    // Archive les fichiers jar produits
                     archiveArtifacts artifacts: 'target/*.jar'
                 }
             }
         }
 
-        stage('Unit Tests') {
+        stage('🧪 [Unit Tests]') {
             steps {
-                // Exécution des tests unitaires
                 sh './mvnw clean verify'
             }
             post {
                 always {
-                    // Génère les rapports de test dans Jenkins
                     junit 'target/surefire-reports/*.xml'
                 }
             }
         }
 
-        stage('Checkstyle') {
+        stage('🧹 [Checkstyle] Analyse du style Java') {
             steps {
-                // Vérifie le style de code Java
                 sh './mvnw checkstyle:checkstyle'
+                sh 'mkdir -p reports && mv target/checkstyle-result.xml reports/'
             }
-        }
-
-        stage('SonarQube') {
-            environment {
-                scannerHome = tool "${SONARSCANNER}"
-            }
-            steps {
-                // Analyse statique avec SonarQube
-                withSonarQubeEnv('sonarserver') {
-                    sh """
-                        \${scannerHome}/bin/sonar-scanner \\
-                        -Dsonar.projectKey=\${PROJET_NAME} \\
-                        -Dsonar.projectName=\${PROJET_NAME} \\
-                        -Dsonar.projectVersion=\${PROJET_VERSION} \\
-                        -Dsonar.sources=src/ \\
-                        -Dsonar.token=\${SONARTOKEN} \\
-                        -Dsonar.java.binaries=target/test-classes/\${PROJET_SERVICE_PATH} \\
-                        -Dsonar.junit.reportsPath=target/surefire-reports/ \\
-                        -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \\
-                        -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml
-                    """
+            post {
+                always {
+                    archiveArtifacts artifacts: 'reports/checkstyle-result.xml'
                 }
             }
         }
 
-        stage('Snyk') {
+        stage('🔍 [SonarQube] Analyse de code + qualité') {
             steps {
-                // Analyse de vulnérabilités avec Snyk
+                withSonarQubeEnv('sonarserver') {
+                    sh '''
+                        sonar-scanner \
+                            -Dsonar.projectKey=${PROJET_NAME} \
+                            -Dsonar.projectName=${PROJET_NAME} \
+                            -Dsonar.projectVersion=${PROJET_VERSION} \
+                            -Dsonar.sources=src/ \
+                            -Dsonar.token=${SONARTOKEN} \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                            -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
+                    '''
+                }
+            }
+        }
+
+        stage(' ✅ [Quality Gate] Vérifie que le projet passe les critères Sonar') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('🛡️ [Snyk]') {
+            steps {
+                sh 'mkdir -p reports/snyk'
                 snykSecurity (
                     severity: "${SYNK_SEVERITY}",
                     snykInstallation: "${SNYK_JENKINS_NAME}",
@@ -138,27 +158,29 @@ pipeline {
                     targetFile: "${SYNK_TARGET_FILE}",
                     monitorProjectOnBuild: true,
                     failOnIssues: true,
-                    additionalArguments: '--report --format=html --report-file=snyk_report.html'
+                    additionalArguments: '--report --format=html --report-file=reports/snyk/snyk_report.html'
                 )
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'reports/snyk/*.html'
+                }
             }
         }
 
-        stage('Docker Build') {
+        stage('🐳 [Docker]  Build') {
             steps {
                 script {
-                    // Vérifie la présence d'un Dockerfile
                     if (!fileExists('Dockerfile')) {
                         error "Dockerfile is missing"
                     }
                 }
-                // Construction de l'image Docker
                 sh 'docker build -t $IMAGE_TAG .'
             }
         }
 
-        stage('Trivy Source Scan') {
+        stage('🔬 [Trivy Source] Scan') {
             steps {
-                // Scan de vulnérabilité du projet (fichiers sources)
                 sh """
                     mkdir -p \$TRIVY_REPORT_DIR
                     docker run --rm \\
@@ -171,11 +193,15 @@ pipeline {
                         --output \$TRIVY_OUTPUT_FS
                 """
             }
+            post {
+                always {
+                    archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/*.json"
+                }
+            }
         }
 
-        stage('Trivy Image Scan') {
+        stage('🖼️ [Trivy Image] Scan') {
             steps {
-                // Scan de vulnérabilité de l'image Docker construite
                 sh """
                     docker run --rm \$TRIVY_IMAGE clean --java-db
                     docker run --rm \\
@@ -189,11 +215,15 @@ pipeline {
                         --output \$TRIVY_OUTPUT_IMAGE
                 """
             }
+            post {
+                always {
+                    archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/*.json"
+                }
+            }
         }
 
-        stage('Push Docker to Nexus') {
+        stage('📦 [Push] Push Docker to Nexus') {
             steps {
-                // Authentification Nexus + push de l'image
                 withCredentials([usernamePassword(
                     credentialsId: 'NEXUS_CREDENTIALS',
                     usernameVariable: 'USER',
@@ -209,9 +239,8 @@ pipeline {
             }
         }
 
-        stage('Cleanup') {
+        stage('🧹 [Cleanup] Clean image') {
             steps {
-                // Nettoyage des images et cache
                 sh """
                     docker rmi \$IMAGE_TAG || true
                     docker system prune -f
@@ -222,13 +251,29 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline completed successfully.'
+            echo '✅ Pipeline terminé avec succès.'
         }
         failure {
-            echo '❌ Pipeline failed.'
+            echo '❌ Échec du pipeline.'
         }
         always {
-            cleanWs() // Nettoyage de l'espace de travail Jenkins
+            // 🗂️ [HTML Reports] Publication des rapports lisibles dans Jenkins
+            publishHTML([
+                reportName : 'Snyk Report',
+                reportDir  : 'reports/snyk',
+                reportFiles: 'snyk_report.html',
+                keepAll    : true,
+                alwaysLinkToLastBuild: true
+            ])
+            publishHTML([
+                reportName : 'Trivy Scan',
+                reportDir  : 'reports/trivy',
+                reportFiles: 'trivy-fs-report.json',
+                keepAll    : true,
+                alwaysLinkToLastBuild: true,
+                allowMissing: true
+            ])
+            cleanWs()
         }
     }
 }
