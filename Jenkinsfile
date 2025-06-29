@@ -288,27 +288,26 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            node(label: 'jenkins') {
-                publishHTML([
-                    reportName : 'Snyk Report',
-                    reportDir  : 'reports/snyk',
-                    reportFiles: 'snyk_report.html',
-                    keepAll    : true,
-                    alwaysLinkToLastBuild: true,
-                    allowMissing: true
-                ])
-                publishHTML([
-                    reportName : 'Trivy Scan',
-                    reportDir  : 'reports/trivy',
-                    reportFiles: 'trivy-fs-report.json',
-                    keepAll    : true,
-                    alwaysLinkToLastBuild: true,
-                    allowMissing: true
-                ])
-                cleanWs()
-            }
-        }
+post {
+    always {
+        publishHTML([
+            reportName : 'Snyk Report',
+            reportDir  : 'reports/snyk',
+            reportFiles: 'snyk_report.html',
+            keepAll    : true,
+            alwaysLinkToLastBuild: true,
+            allowMissing: true
+        ])
+        publishHTML([
+            reportName : 'Trivy Scan',
+            reportDir  : 'reports/trivy',
+            reportFiles: 'trivy-fs-report.json',
+            keepAll    : true,
+            alwaysLinkToLastBuild: true,
+            allowMissing: true
+        ])
+        cleanWs()
     }
+}
+
 }
