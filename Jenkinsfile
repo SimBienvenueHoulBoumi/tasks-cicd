@@ -117,12 +117,14 @@ pipeline {
         }
 
         stage('🔍 SonarQube') {
-            agent any
+            agent {
+                label 'master'
+            }
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONARTOKEN')]) {
                     withSonarQubeEnv('sonarserver') {
                         sh '''
-                            sonar-scanner \
+                            /opt/sonar-scanner/bin/sonar-scanner \
                                 -Dsonar.projectKey=${PROJET_NAME} \
                                 -Dsonar.projectName=${PROJET_NAME} \
                                 -Dsonar.projectVersion=${PROJET_VERSION} \
