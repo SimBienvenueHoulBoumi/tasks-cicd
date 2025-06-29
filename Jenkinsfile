@@ -118,7 +118,10 @@ pipeline {
 
         stage('🔍 SonarQube') {
             agent {
-                label 'master'
+                docker {
+                    image 'sonarsource/sonar-scanner-cli:5'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                }
             }
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONARTOKEN')]) {
