@@ -18,6 +18,7 @@ pipeline {
 
         NEXUS_URL           = 'nexus:8082'
         IMAGE_FULL          = "${NEXUS_URL}/${PROJET_NAME}:${BUILD_NUMBER}"
+        NEXUS_CREDENTIALS   = "NEXUS_CREDENTIALS"
 
         REPORT_DIR          = 'reports'
         TRIVY_REPORT_DIR    = "${REPORT_DIR}/trivy"
@@ -26,7 +27,7 @@ pipeline {
         TRIVY_OUTPUT_FS     = "/root/reports/trivy-fs-report.json"
         TRIVY_OUTPUT_IMAGE  = "/root/reports/trivy-image-report.json"
 
-        SNYK_JENKINS_NAME   = 'tasks'
+        SNYK_JENKINS_NAME   = 'snyk'
         SNYK_TOKEN_ID       = 'SNYK_AUTH_TOKEN'
         SYNK_TARGET_FILE    = 'pom.xml'
         SYNK_SEVERITY       = 'high'
@@ -41,7 +42,7 @@ pipeline {
                     branches: [[name: 'main']],
                     userRemoteConfigs: [[
                         url: "${GITHUB_URL}",
-                        credentialsId: "${GITHUB_CREDENTIALS_ID}"
+                        credentialsId: "${GITHUB_CREDENTIALS}"
                     ]]
                 ])
             }
@@ -92,7 +93,7 @@ pipeline {
             }
         }
 
-        stage('🔍 SonarQube') {
+        stage('🔍 SonarQube Scan') {
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONARTOKEN')]) {
                     withSonarQubeEnv('sonarserver') {
@@ -192,7 +193,7 @@ pipeline {
         stage('📦 Push Docker to Nexus') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'NEXUS_CREDENTIALS',
+                    credentialsId: "${NEXUS_CREDENTIALS}",
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
