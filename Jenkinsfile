@@ -1,38 +1,37 @@
 pipeline {
-    agent { label 'jenkins-agent' } // Le label de ton agent SSH
+    agent { label 'jenkins-agent' }
 
     tools {
-        jdk 'jdk'         // Le nom défini dans Jenkins > Global Tool Configuration
-        maven 'maven'     // Le nom défini dans Jenkins > Global Tool Configuration
+        jdk 'jdk'
+        maven 'maven'
     }
 
-
     environment {
-        APP_NAME            = 'tasks-cicd'
+        APP_NAME            = "tasks-cicd"
         IMAGE_TAG           = "${APP_NAME}:${BUILD_NUMBER}"
-        PROJET_NAME         = 'task-rest-api'
-        PROJET_VERSION      = '0.0.1'
+        PROJET_NAME         = "task-rest-api"
+        PROJET_VERSION      = "0.0.1"
 
         GITHUB_URL          = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
-        GITHUB_CREDENTIALS = 'GITHUB-CREDENTIALS'
+        GITHUB_CREDENTIALS  = "GITHUB-CREDENTIALS"
 
-        NEXUS_URL           = 'nexus:8082'
+        NEXUS_URL           = "nexus:8082"
         IMAGE_FULL          = "${NEXUS_URL}/${PROJET_NAME}:${BUILD_NUMBER}"
         NEXUS_CREDENTIALS   = "NEXUS_CREDENTIALS"
 
-        REPORT_DIR          = 'reports'
+        REPORT_DIR          = "reports"
         TRIVY_REPORT_DIR    = "${REPORT_DIR}/trivy"
-        TRIVY_IMAGE         = 'aquasec/trivy:latest'
-        TRIVY_SEVERITY      = 'CRITICAL,HIGH'
-        TRIVY_OUTPUT_FS     = "/root/reports/trivy-fs-report.json"
-        TRIVY_OUTPUT_IMAGE  = "/root/reports/trivy-image-report.json"
+        TRIVY_IMAGE         = "aquasec/trivy:latest"
+        TRIVY_SEVERITY      = "CRITICAL,HIGH"
+        TRIVY_OUTPUT_FS     = "${TRIVY_REPORT_DIR}/trivy-fs-report.json"
+        TRIVY_OUTPUT_IMAGE  = "${TRIVY_REPORT_DIR}/trivy-image-report.json"
 
-        SNYK_JENKINS_NAME   = 'snyk'
-        SNYK_TOKEN_ID       = 'SNYK_AUTH_TOKEN'
-        SYNK_TARGET_FILE    = 'pom.xml'
-        SYNK_SEVERITY       = 'high'
+        SNYK_JENKINS_NAME   = "snyk"  // nom défini dans Jenkins > Global Tool Configuration
+        SNYK_TOKEN_ID       = "SNYK_AUTH_TOKEN" // ID dans Credentials
+        SNYK_TARGET_FILE    = "pom.xml"
+        SNYK_SEVERITY       = "high"
 
-        SONAR_URL           = 'http://sonarqube:9000'
+        SONAR_URL           = "http://sonarqube:9000"
     }
 
     stages {
@@ -127,10 +126,10 @@ pipeline {
             steps {
                 sh 'mkdir -p reports/snyk'
                 snykSecurity (
-                    severity: "${SYNK_SEVERITY}",
+                    severity: "${SNYK_SEVERITY}",
                     snykInstallation: "${SNYK_JENKINS_NAME}",
                     snykTokenId: "${SNYK_TOKEN_ID}",
-                    targetFile: "${SYNK_TARGET_FILE}",
+                    targetFile: "${SNYK_TARGET_FILE}",
                     monitorProjectOnBuild: true,
                     failOnIssues: true,
                     additionalArguments: '--report --format=html --report-file=reports/snyk/snyk_report.html'
