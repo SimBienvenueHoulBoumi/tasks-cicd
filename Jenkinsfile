@@ -125,15 +125,17 @@ pipeline {
         stage('🛡️ Snyk') {
             steps {
                 sh 'mkdir -p reports/snyk'
-                snykSecurity (
-                    severity: "${SNYK_SEVERITY}",
-                    snykInstallation: "${SNYK_JENKINS_NAME}",
-                    snykTokenId: "${SNYK_TOKEN_ID}",
-                    targetFile: "${SNYK_TARGET_FILE}",
-                    monitorProjectOnBuild: true,
-                    failOnIssues: true,
-                    additionalArguments: '--report --format=html --report-file=reports/snyk/snyk_report.html'
-                )
+                withCredentials([string(credentialsId: "${SNYK_TOKEN_ID}", variable: 'SNYK_TOKEN')]) {
+                    snykSecurity (
+                        severity: "${SNYK_SEVERITY}",
+                        snykInstallation: "${SNYK_JENKINS_NAME}",
+                        snykTokenId: "${SNYK_TOKEN_ID}",
+                        targetFile: "${SNYK_TARGET_FILE}",
+                        monitorProjectOnBuild: true,
+                        failOnIssues: true,
+                        additionalArguments: '--report --format=html --report-file=reports/snyk/snyk_report.html'
+                    )
+                }
             }
             post {
                 always {
@@ -141,6 +143,7 @@ pipeline {
                 }
             }
         }
+
 
         stage('🐳 Docker Build') {
             steps {
