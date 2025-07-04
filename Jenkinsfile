@@ -14,7 +14,7 @@ pipeline {
         PROJET_VERSION      = '0.0.1'
 
         GITHUB_URL          = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
-        GITHUB_CREDENTIALS_ID = 'GITHUB-CREDENTIALS'
+        GITHUB_CREDENTIALS = 'GITHUB-CREDENTIALS'
 
         NEXUS_URL           = 'nexus:8082'
         IMAGE_FULL          = "${NEXUS_URL}/${PROJET_NAME}:${BUILD_NUMBER}"
