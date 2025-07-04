@@ -27,7 +27,7 @@ pipeline {
         TRIVY_OUTPUT_IMAGE  = "${TRIVY_REPORT_DIR}/trivy-image-report.json"
 
         SNYK_JENKINS_NAME   = "snyk"  // nom défini dans Jenkins > Global Tool Configuration
-        SNYK_TOKEN_ID       = "SNYK_AUTH_TOKEN" // ID dans Credentials
+        SNYK_TOKEN_ID = "SNYK_AUTH_TOKEN" // ID dans Credentials
         SNYK_TARGET_FILE    = "pom.xml"
         SNYK_SEVERITY       = "high"
 
