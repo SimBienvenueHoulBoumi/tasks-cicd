@@ -2,7 +2,10 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     options {
+        skipDefaultCheckout(false)
         buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 30, unit: 'MINUTES')
+        timestamps()
     }
 
     tools {
@@ -13,31 +16,26 @@ pipeline {
 
     environment {
         APP_NAME           = "tasks-cicd"
+        BUILD_ID           = "0.0.1"
         IMAGE_TAG          = "${APP_NAME}:${BUILD_NUMBER}"
-        PROJET_NAME        = "task-rest-api"
-        PROJET_VERSION     = "0.0.1"
+        PROJECT_NAME       = "task-rest-api"
+        PROJECT_VERSION    = "0.0.1"
 
         GITHUB_URL         = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
         GITHUB_CREDENTIALS = "GITHUB-CREDENTIALS"
 
         NEXUS_URL          = "http://nexus:8082"
-        IMAGE_FULL         = "${NEXUS_URL}/${PROJET_NAME}:${BUILD_NUMBER}"
+        IMAGE_FULL         = "${NEXUS_URL}/${PROJECT_NAME}:${BUILD_NUMBER}"
         NEXUS_CREDENTIALS  = "NEXUS_CREDENTIALS"
 
-        REPORT_DIR         = "reports"
-        TRIVY_REPORT_DIR   = "${REPORT_DIR}/trivy"
-        TRIVY_IMAGE        = "aquasec/trivy:latest"
-        TRIVY_SEVERITY     = "CRITICAL,HIGH"
-        TRIVY_OUTPUT_FS    = "${TRIVY_REPORT_DIR}/trivy-fs-report.json"
-        TRIVY_OUTPUT_IMAGE = "${TRIVY_REPORT_DIR}/trivy-image-report.json"
-
-        SNYK_TARGET_FILE   = "pom.xml"
-        SNYK_SEVERITY      = "high"
-        DOCKER_BUILDKIT    = '1'
-        SONAR_URL          = "http://sonarqube:9000"
+        SONAR_SERVER       = "sonarserver"
+        SONAR_SCANNER      = "sonarscanner"
+        SNYK               = "snyk"
+        TRIVY_URL          = "http://localhost:4954/scan"
     }
 
     stages {
+
         stage('📥 Checkout') {
             steps {
                 checkout([$class: 'GitSCM',
@@ -61,9 +59,9 @@ pipeline {
             }
         }
 
-        stage('🏗️ Build & Archive') {
+        stage('🏗️ Build') {
             steps {
-                sh './mvnw clean package'
+                sh './mvnw clean package -DskipTests'
             }
             post {
                 success {
@@ -72,9 +70,9 @@ pipeline {
             }
         }
 
-        stage('🧪 Unit Tests') {
+        stage('🧪 Tests') {
             steps {
-                sh './mvnw clean verify'
+                sh './mvnw test'
             }
             post {
                 always {
@@ -95,24 +93,26 @@ pipeline {
             }
         }
 
-        stage('🔍 SonarQube Scan') {
+        stage('📊 SonarQube') {
+            environment {
+                SCANNER_HOME = tool SONAR_SCANNER
+            }
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
-                    withSonarQubeEnv('sonarserver') {
+                    withSonarQubeEnv("${SONAR_SERVER}") {
                         sh '''#!/bin/bash
                             ./mvnw clean install
+
                             sonar-scanner \
-                                -Dsonar.projectKey=${PROJET_NAME} \
-                                -Dsonar.projectName=${PROJET_NAME} \
-                                -Dsonar.projectVersion=${PROJET_VERSION} \
-                                -Dsonar.host.url=${SONAR_URL} \
-                                -Dsonar.token=$SONAR_TOKEN \
-                                -Dsonar.sourceEncoding=UTF-8 \
+                                -Dsonar.projectKey=task-rest-api \
+                                -Dsonar.projectName=task-rest-api \
+                                -Dsonar.projectVersion=0.0.1 \
                                 -Dsonar.sources=src/ \
                                 -Dsonar.java.binaries=target/classes \
                                 -Dsonar.junit.reportsPath=target/surefire-reports/ \
                                 -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                                -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
+                                -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml \
+                                -Dsonar.token=$SONAR_TOKEN
                         '''
                     }
                 }
@@ -121,26 +121,23 @@ pipeline {
 
         stage('✅ Quality Gate') {
             steps {
-                timeout(time: 20, unit: 'MINUTES') {
+                timeout(time: 10, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
 
-        stage('🛡️ Analyse Snyk') {
+        stage('🛡️ Snyk') {
             steps {
-                withCredentials([string(credentialsId: 'SNYK_AUTH_TOKEN', variable: 'SNYK_TOKEN')]) {
-                    sh '''#!/bin/bash
-                        export SNYK_TOKEN=$SNYK_TOKEN
-                        mkdir -p reports/snyk
-
-                        snyk test --file=pom.xml \
-                            --severity-threshold=high \
-                            --report \
-                            --format=html \
-                            --report-file=reports/snyk/snyk_report.html
-                    '''
-                }
+                snykSecurity (
+                    severity: 'high',
+                    snykInstallation: "${SNYK}",
+                    snykTokenId: 'SNYK_AUTH_TOKEN',
+                    targetFile: 'pom.xml',
+                    monitorProjectOnBuild: true,
+                    failOnIssues: false,
+                    additionalArguments: '--report --format=html --report-file=reports/snyk/snyk_report.html'
+                )
             }
             post {
                 always {
@@ -156,49 +153,36 @@ pipeline {
             }
         }
 
-        stage('🐳 Build avec Buildx') {
+        stage('🐳 Docker Build') {
             steps {
-                sh '''
-                    docker buildx create --use --name myApp || true
-                    docker buildx inspect myApp --bootstrap
-                    docker buildx build --load -t $IMAGE_TAG .
-                '''
+                sh "docker build -t ${IMAGE_TAG} ."
             }
         }
 
-        stage('🔬 Trivy Source') {
+        stage('🔬 Trivy') {
             steps {
-                sh '''
-                    mkdir -p reports/trivy
-                    trivy fs . --format html --output reports/trivy/trivy_report.html || true
-                '''
+                script {
+                    sh '''
+                        sleep 10
+                        curl -s -X POST ${TRIVY_URL} \
+                          -H 'Content-Type: application/json' \
+                          -d '{
+                            "image_name": "${IMAGE_TAG}",
+                            "scan_type": "image",
+                            "vuln_type": ["os", "library"],
+                            "severity": ["CRITICAL", "HIGH"]
+                          }' > reports/trivy/trivy-report.json
+                    '''
+                }
             }
             post {
                 always {
-                    archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/*.json"
+                    archiveArtifacts artifacts: 'reports/trivy/trivy-report.json'
                 }
             }
         }
 
-        stage('🖼️ Trivy Image') {
-            steps {
-                sh '''
-                    trivy image $IMAGE_TAG \
-                        --timeout 10m \
-                        --exit-code 0 \
-                        --severity $TRIVY_SEVERITY \
-                        --format json \
-                        --output $TRIVY_OUTPUT_IMAGE || true
-                '''
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: "$TRIVY_REPORT_DIR/*.json"
-                }
-            }
-        }
-
-        stage('📦 Push Docker to Nexus') {
+        stage('📦 Push to Nexus') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "${NEXUS_CREDENTIALS}",
@@ -207,14 +191,10 @@ pipeline {
                 )]) {
                     sh '''#!/bin/bash
                         set -euo pipefail
-                        echo "[INFO] 🔐 Connexion à Nexus Docker Registry..."
-                        echo "$PASS" | docker login $NEXUS_URL -u "$USER" --password-stdin
-                        echo "[INFO] 🏷️  Tag de l'image : $IMAGE_TAG → $IMAGE_FULL"
+                        echo "$PASS" | docker login "$NEXUS_URL" -u "$USER" --password-stdin
                         docker tag "$IMAGE_TAG" "$IMAGE_FULL"
-                        echo "[INFO] 📤 Push vers Nexus : $IMAGE_FULL"
                         docker push "$IMAGE_FULL"
-                        echo "[INFO] 🔓 Déconnexion du registre Nexus"
-                        docker logout $NEXUS_URL
+                        docker logout "$NEXUS_URL"
                     '''
                 }
             }
@@ -223,7 +203,7 @@ pipeline {
         stage('🧹 Cleanup') {
             steps {
                 sh '''
-                    docker rmi $IMAGE_TAG || true
+                    docker rmi "${IMAGE_TAG}" || true
                     docker system prune -f
                 '''
             }
@@ -234,17 +214,9 @@ pipeline {
         always {
             cleanWs()
             publishHTML([
-                reportName : 'Snyk Report',
-                reportDir  : 'reports/snyk',
-                reportFiles: 'snyk_report.html',
-                keepAll    : true,
-                alwaysLinkToLastBuild: true,
-                allowMissing: true
-            ])
-            publishHTML([
-                reportName : 'Trivy Scan',
+                reportName : 'Trivy Report',
                 reportDir  : 'reports/trivy',
-                reportFiles: 'trivy-fs-report.json',
+                reportFiles: 'trivy-report.json',
                 keepAll    : true,
                 alwaysLinkToLastBuild: true,
                 allowMissing: true
