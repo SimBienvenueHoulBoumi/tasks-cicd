@@ -52,12 +52,12 @@ pipeline {
 
         stage('🧰 Maven Wrapper') {
             steps {
-                sh """
+                sh '''
                     if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
                         echo "Creating Maven Wrapper..."
                         mvn -N io.takari:maven:wrapper
                     fi
-                """
+                '''
             }
         }
 
@@ -101,13 +101,13 @@ pipeline {
                     withSonarQubeEnv('sonarserver') {
                         sh '''#!/bin/bash
                             ./mvnw clean install
-
                             sonar-scanner \
                                 -Dsonar.projectKey=${PROJET_NAME} \
                                 -Dsonar.projectName=${PROJET_NAME} \
                                 -Dsonar.projectVersion=${PROJET_VERSION} \
                                 -Dsonar.host.url=${SONAR_URL} \
                                 -Dsonar.token=$SONAR_TOKEN \
+                                -Dsonar.sourceEncoding=UTF-8 \
                                 -Dsonar.sources=src/ \
                                 -Dsonar.java.binaries=target/classes \
                                 -Dsonar.junit.reportsPath=target/surefire-reports/ \
@@ -130,12 +130,8 @@ pipeline {
         stage('🛡️ Analyse Snyk') {
             steps {
                 withCredentials([string(credentialsId: 'SNYK_AUTH_TOKEN', variable: 'SNYK_TOKEN')]) {
-                    sh """
-                        export JAVA_HOME=/opt/java/openjdk
-                        export PATH=$JAVA_HOME/bin:$PATH
-
+                    sh '''#!/bin/bash
                         export SNYK_TOKEN=$SNYK_TOKEN
-
                         mkdir -p reports/snyk
 
                         snyk test --file=pom.xml \
@@ -143,7 +139,7 @@ pipeline {
                             --report \
                             --format=html \
                             --report-file=reports/snyk/snyk_report.html
-                    """
+                    '''
                 }
             }
             post {
@@ -162,21 +158,20 @@ pipeline {
 
         stage('🐳 Build avec Buildx') {
             steps {
-                sh """
+                sh '''
                     docker buildx create --use --name myApp || true
                     docker buildx inspect myApp --bootstrap
                     docker buildx build --load -t $IMAGE_TAG .
-                """
+                '''
             }
         }
 
         stage('🔬 Trivy Source') {
             steps {
-                sh 'trivy fs . --severity HIGH --exit-code 0 || true'
-                sh """
+                sh '''
                     mkdir -p reports/trivy
                     trivy fs . --format html --output reports/trivy/trivy_report.html || true
-                """
+                '''
             }
             post {
                 always {
@@ -187,14 +182,14 @@ pipeline {
 
         stage('🖼️ Trivy Image') {
             steps {
-                sh """
+                sh '''
                     trivy image $IMAGE_TAG \
                         --timeout 10m \
                         --exit-code 0 \
                         --severity $TRIVY_SEVERITY \
                         --format json \
-                        --output $TRIVY_OUTPUT_IMAGE
-                """
+                        --output $TRIVY_OUTPUT_IMAGE || true
+                '''
             }
             post {
                 always {
@@ -210,31 +205,27 @@ pipeline {
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
-                    sh """
+                    sh '''#!/bin/bash
                         set -euo pipefail
-
                         echo "[INFO] 🔐 Connexion à Nexus Docker Registry..."
-                        echo $PASS | docker login $NEXUS_URL -u $USER --password-stdin
-
+                        echo "$PASS" | docker login $NEXUS_URL -u "$USER" --password-stdin
                         echo "[INFO] 🏷️  Tag de l'image : $IMAGE_TAG → $IMAGE_FULL"
-                        docker tag $IMAGE_TAG $IMAGE_FULL
-
+                        docker tag "$IMAGE_TAG" "$IMAGE_FULL"
                         echo "[INFO] 📤 Push vers Nexus : $IMAGE_FULL"
-                        docker push $IMAGE_FULL
-
+                        docker push "$IMAGE_FULL"
                         echo "[INFO] 🔓 Déconnexion du registre Nexus"
                         docker logout $NEXUS_URL
-                    """
+                    '''
                 }
             }
         }
 
         stage('🧹 Cleanup') {
             steps {
-                sh """
+                sh '''
                     docker rmi $IMAGE_TAG || true
                     docker system prune -f
-                """
+                '''
             }
         }
     }
