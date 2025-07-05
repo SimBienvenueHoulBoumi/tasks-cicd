@@ -97,18 +97,20 @@ pipeline {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONARTOKEN')]) {
                     withSonarQubeEnv('sonarserver') {
                         sh '''
+                            ./mvnw clean install
+
                             sonar-scanner \
-                            -Dsonar.projectKey=${PROJET_NAME} \
-                            -Dsonar.projectName=${PROJET_NAME} \
-                            -Dsonar.projectVersion=${PROJET_VERSION} \
-                            -Dsonar.host.url=http://sonarqube:9000 \
-                            -Dsonar.token=${SONARTOKEN} \
-                            -Dsonar.sources=src/ \
-                            -Dsonar.java.libraries=target/classes \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                            -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
+                                -Dsonar.projectKey=${PROJET_NAME} \
+                                -Dsonar.verbose=true \
+                                -Dsonar.projectName=${PROJET_NAME} \
+                                -Dsonar.projectVersion=${PROJET_VERSION} \
+                                -Dsonar.host.url=http://sonarqube:9000 \
+                                -Dsonar.token=${SONARTOKEN} \
+                                -Dsonar.sources=src/ \
+                                -Dsonar.java.binaries=target/classes \
+                                -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                                -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                                -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
                         '''
                     }
                 }
