@@ -99,21 +99,21 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('sonarserver') {
-                        sh """
+                        sh '''#!/bin/bash
                             ./mvnw clean install
 
                             sonar-scanner \
-                                -Dsonar.projectKey=$PROJET_NAME \
-                                -Dsonar.projectName=$PROJET_NAME \
-                                -Dsonar.projectVersion=$PROJET_VERSION \
-                                -Dsonar.host.url=$SONAR_URL \
+                                -Dsonar.projectKey=${PROJET_NAME} \
+                                -Dsonar.projectName=${PROJET_NAME} \
+                                -Dsonar.projectVersion=${PROJET_VERSION} \
+                                -Dsonar.host.url=${SONAR_URL} \
                                 -Dsonar.token=$SONAR_TOKEN \
                                 -Dsonar.sources=src/ \
                                 -Dsonar.java.binaries=target/classes \
                                 -Dsonar.junit.reportsPath=target/surefire-reports/ \
                                 -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
                                 -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
-                        """
+                        '''
                     }
                 }
             }
