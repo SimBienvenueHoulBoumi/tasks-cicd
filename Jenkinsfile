@@ -141,7 +141,7 @@ pipeline {
                 }
             }
             post {
-                script {
+                always {
                     publishHTML([
                         reportDir: 'reports/snyk',
                         reportFiles: 'snyk_report.html',
@@ -152,6 +152,7 @@ pipeline {
                     ])
                 }
             }
+
         }
 
 
