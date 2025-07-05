@@ -127,13 +127,13 @@ pipeline {
             steps {
                 sh 'mkdir -p reports/snyk'
                 withCredentials([string(credentialsId: "${SNYK_TOKEN_ID}", variable: 'SNYK_TOKEN')]) {
-                    snykSecurity (
-                        severity: "${SNYK_SEVERITY}",
-                        snykInstallation: "${SNYK_JENKINS_NAME}",
-                        snykTokenId: "${SNYK_TOKEN_ID}",
-                        targetFile: "${SNYK_TARGET_FILE}",
-                        monitorProjectOnBuild: true,
-                        failOnIssues: true,
+                    snykSecurity(
+                        snykInstallation: "${SNYK_JENKINS_NAME}",              // Nom de l'installation définie dans Jenkins > Global Tool Configuration
+                        snykTokenId: "${SNYK_TOKEN_ID}",                        // ID Jenkins des credentials Snyk (secret text)
+                        targetFile: "${SNYK_TARGET_FILE}",                      // Exemple : 'pom.xml' ou 'package.json'
+                        severity: "${SNYK_SEVERITY}",                           // Exemple : 'low', 'medium', 'high'
+                        monitorProjectOnBuild: true,                            // Envoie les résultats dans le dashboard Snyk
+                        failOnIssues: true,                                     // Fait échouer le build en cas de vulnérabilités
                         additionalArguments: '--report --format=html --report-file=reports/snyk/snyk_report.html'
                     )
                 }
