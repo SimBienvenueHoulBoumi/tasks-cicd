@@ -94,26 +94,25 @@ pipeline {
         stage('🔍 SonarQube Scan') {
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
-                    withSonarQubeEnv('sonarserver') {
-                        sh """
-                            ./mvnw clean install
+                    sh """
+                        ./mvnw clean install
 
-                            sonar-scanner \
-                                -Dsonar.projectKey=$PROJET_NAME \
-                                -Dsonar.projectName=$PROJET_NAME \
-                                -Dsonar.projectVersion=$PROJET_VERSION \
-                                -Dsonar.token=$SONAR_TOKEN \
-                                -Dsonar.sources=src/ \
-                                -Dsonar.java.binaries=target/classes \
-                                -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                                -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                                -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
-                        """
-                    }
+                        sonar-scanner \\
+                            -Dsonar.projectKey=$PROJET_NAME \\
+                            -Dsonar.projectName=$PROJET_NAME \\
+                            -Dsonar.projectVersion=$PROJET_VERSION \\
+                            -Dsonar.host.url=http://sonarqube:9000 \\
+                            -Dsonar.token=$SONAR_TOKEN \\
+                            -Dsonar.sources=src/ \\
+                            -Dsonar.java.binaries=target/classes \\
+                            -Dsonar.junit.reportsPath=target/surefire-reports/ \\
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \\
+                            -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
+                    """
                 }
             }
         }
-        
+
         stage('✅ Quality Gate') {
             steps {
                 timeout(time: 20, unit: 'MINUTES') {
