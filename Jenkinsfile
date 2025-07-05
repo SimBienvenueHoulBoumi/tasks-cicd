@@ -95,10 +95,12 @@ pipeline {
         stage('🔍 SonarQube Scan') {
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONARTOKEN')]) {
+                    // url http://sonarqube:9000 car jenkins et sonarQube sont dans un meme docker compose
                     withSonarQubeEnv('sonarserver') {
                         sh '''
                             sonar-scanner \
                                 -Dsonar.projectKey=${PROJET_NAME} \
+                                -Dsonar.host.url=http://sonarqube:9000 \  
                                 -Dsonar.projectName=${PROJET_NAME} \
                                 -Dsonar.projectVersion=${PROJET_VERSION} \
                                 -Dsonar.host.url=${SONAR_URL} \
