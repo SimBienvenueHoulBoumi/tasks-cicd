@@ -16,7 +16,7 @@ pipeline {
         GITHUB_URL          = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
         GITHUB_CREDENTIALS  = "GITHUB-CREDENTIALS"
 
-        NEXUS_URL           = "nexus:8082"
+        NEXUS_URL           = "http://nexus:8082"
         IMAGE_FULL          = "${NEXUS_URL}/${PROJET_NAME}:${BUILD_NUMBER}"
         NEXUS_CREDENTIALS   = "NEXUS_CREDENTIALS"
 
@@ -209,12 +209,21 @@ pipeline {
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
-                    sh """
-                        echo "\$PASS" | docker login \$NEXUS_URL -u "\$USER" --password-stdin
-                        docker tag \$IMAGE_TAG \$IMAGE_FULL
-                        docker push \$IMAGE_FULL
-                        docker logout \$NEXUS_URL
-                    """
+                    sh '''#!/bin/bash
+                        set -euo pipefail
+
+                        echo "[INFO] 🔐 Connexion à Nexus Docker Registry..."
+                        echo "$PASS" | docker login "$NEXUS_URL" -u "$USER" --password-stdin
+
+                        echo "[INFO] 🏷️  Tag de l'image : $IMAGE_TAG → $IMAGE_FULL"
+                        docker tag "$IMAGE_TAG" "$IMAGE_FULL"
+
+                        echo "[INFO] 📤 Push vers Nexus : $IMAGE_FULL"
+                        docker push "$IMAGE_FULL"
+
+                        echo "[INFO] 🔓 Déconnexion du registre Nexus"
+                        docker logout "$NEXUS_URL"
+                    '''
                 }
             }
         }
