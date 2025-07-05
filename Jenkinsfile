@@ -171,14 +171,11 @@ pipeline {
 
         stage('🔬 Trivy Source') {
             steps {
-                sh """
-                    mkdir -p \$TRIVY_REPORT_DIR
-                    trivy fs . \
-                        --exit-code 0 \
-                        --severity \$TRIVY_SEVERITY \
-                        --format json \
-                        --output \$TRIVY_OUTPUT_FS
-                """
+                sh 'trivy fs . --severity HIGH --exit-code 0 || true'
+                sh '''
+                    mkdir -p reports/trivy
+                    trivy fs . --format html --output reports/trivy/trivy_report.html || true
+                '''  
             }
             post {
                 always {
