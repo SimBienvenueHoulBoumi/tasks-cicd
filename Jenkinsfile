@@ -141,8 +141,15 @@ pipeline {
                 }
             }
             post {
-                always {
-                    archiveArtifacts artifacts: 'reports/snyk/*.html'
+                script {
+                    publishHTML([
+                        reportDir: 'reports/snyk',
+                        reportFiles: 'snyk_report.html',
+                        reportName: 'Snyk Report',
+                        keepAll: true,
+                        alwaysLinkToLastBuild: true,
+                        allowMissing: false
+                    ])
                 }
             }
         }
