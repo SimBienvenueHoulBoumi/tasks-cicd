@@ -1,6 +1,10 @@
 pipeline {
     agent { label 'jenkins-agent' }
 
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
     tools {
         jdk 'jdk'
         maven 'maven'
@@ -124,7 +128,7 @@ pipeline {
         stage('🛡️ Analyse Snyk') {
             steps {
                 withCredentials([string(credentialsId: 'SNYK_AUTH_TOKEN', variable: 'SNYK_TOKEN')]) {
-                    sh '''
+                    sh """
                         export JAVA_HOME=/opt/java/openjdk
                         export PATH=$JAVA_HOME/bin:$PATH
 
@@ -137,7 +141,7 @@ pipeline {
                             --report \
                             --format=html \
                             --report-file=reports/snyk/snyk_report.html
-                    '''
+                    """
                 }
             }
             post {
@@ -156,21 +160,21 @@ pipeline {
 
         stage('🐳 Build avec Buildx') {
             steps {
-                sh '''
+                sh """
                     docker buildx create --use --name myApp || true
                     docker buildx inspect myApp --bootstrap
                     docker buildx build --load -t $IMAGE_TAG .
-                '''
+                """
             }
         }
 
         stage('🔬 Trivy Source') {
             steps {
                 sh 'trivy fs . --severity HIGH --exit-code 0 || true'
-                sh '''
+                sh """
                     mkdir -p reports/trivy
                     trivy fs . --format html --output reports/trivy/trivy_report.html || true
-                '''  
+                """  
             }
             post {
                 always {
@@ -204,7 +208,7 @@ pipeline {
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
-                    sh '''#!/bin/bash
+                    sh """#!/bin/bash
                         set -euo pipefail
 
                         echo "[INFO] 🔐 Connexion à Nexus Docker Registry..."
@@ -218,7 +222,7 @@ pipeline {
 
                         echo "[INFO] 🔓 Déconnexion du registre Nexus"
                         docker logout "$NEXUS_URL"
-                    '''
+                    """
                 }
             }
         }
