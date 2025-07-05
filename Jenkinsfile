@@ -12,29 +12,29 @@ pipeline {
     }
 
     environment {
-        APP_NAME            = "tasks-cicd"
-        IMAGE_TAG           = "${APP_NAME}:${BUILD_NUMBER}"
-        PROJET_NAME         = "task-rest-api"
-        PROJET_VERSION      = "0.0.1"
+        APP_NAME           = "tasks-cicd"
+        IMAGE_TAG          = "${APP_NAME}:${BUILD_NUMBER}"
+        PROJET_NAME        = "task-rest-api"
+        PROJET_VERSION     = "0.0.1"
 
-        GITHUB_URL          = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
-        GITHUB_CREDENTIALS  = "GITHUB-CREDENTIALS"
+        GITHUB_URL         = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
+        GITHUB_CREDENTIALS = "GITHUB-CREDENTIALS"
 
-        NEXUS_URL           = "http://nexus:8082"
-        IMAGE_FULL          = "${NEXUS_URL}/${PROJET_NAME}:${BUILD_NUMBER}"
-        NEXUS_CREDENTIALS   = "NEXUS_CREDENTIALS"
+        NEXUS_URL          = "http://nexus:8082"
+        IMAGE_FULL         = "${NEXUS_URL}/${PROJET_NAME}:${BUILD_NUMBER}"
+        NEXUS_CREDENTIALS  = "NEXUS_CREDENTIALS"
 
-        REPORT_DIR          = "reports"
-        TRIVY_REPORT_DIR    = "${REPORT_DIR}/trivy"
-        TRIVY_IMAGE         = "aquasec/trivy:latest"
-        TRIVY_SEVERITY      = "CRITICAL,HIGH"
-        TRIVY_OUTPUT_FS     = "${TRIVY_REPORT_DIR}/trivy-fs-report.json"
-        TRIVY_OUTPUT_IMAGE  = "${TRIVY_REPORT_DIR}/trivy-image-report.json"
+        REPORT_DIR         = "reports"
+        TRIVY_REPORT_DIR   = "${REPORT_DIR}/trivy"
+        TRIVY_IMAGE        = "aquasec/trivy:latest"
+        TRIVY_SEVERITY     = "CRITICAL,HIGH"
+        TRIVY_OUTPUT_FS    = "${TRIVY_REPORT_DIR}/trivy-fs-report.json"
+        TRIVY_OUTPUT_IMAGE = "${TRIVY_REPORT_DIR}/trivy-image-report.json"
 
-        SNYK_TARGET_FILE    = "pom.xml"
-        SNYK_SEVERITY       = "high"
-        DOCKER_BUILDKIT     = '1'
-        SONAR_URL           = "http://sonarqube:9000"
+        SNYK_TARGET_FILE   = "pom.xml"
+        SNYK_SEVERITY      = "high"
+        DOCKER_BUILDKIT    = '1'
+        SONAR_URL          = "http://sonarqube:9000"
     }
 
     stages {
@@ -98,21 +98,23 @@ pipeline {
         stage('🔍 SonarQube Scan') {
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
-                    sh """
-                        ./mvnw clean install
+                    withSonarQubeEnv('sonarserver') {
+                        sh """
+                            ./mvnw clean install
 
-                        sonar-scanner \
-                            -Dsonar.projectKey=$PROJET_NAME \
-                            -Dsonar.projectName=$PROJET_NAME \
-                            -Dsonar.projectVersion=$PROJET_VERSION \
-                            -Dsonar.host.url=http://sonarqube:9000 \
-                            -Dsonar.token=$SONAR_TOKEN \
-                            -Dsonar.sources=src/ \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                            -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
-                    """
+                            sonar-scanner \
+                                -Dsonar.projectKey=$PROJET_NAME \
+                                -Dsonar.projectName=$PROJET_NAME \
+                                -Dsonar.projectVersion=$PROJET_VERSION \
+                                -Dsonar.host.url=$SONAR_URL \
+                                -Dsonar.token=$SONAR_TOKEN \
+                                -Dsonar.sources=src/ \
+                                -Dsonar.java.binaries=target/classes \
+                                -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                                -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                                -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
+                        """
+                    }
                 }
             }
         }
@@ -174,7 +176,7 @@ pipeline {
                 sh """
                     mkdir -p reports/trivy
                     trivy fs . --format html --output reports/trivy/trivy_report.html || true
-                """  
+                """
             }
             post {
                 always {
@@ -196,7 +198,7 @@ pipeline {
             }
             post {
                 always {
-                    archiveArtifacts artifacts: "${TRIVY_REPORT_DIR}/*.json"
+                    archiveArtifacts artifacts: "$TRIVY_REPORT_DIR/*.json"
                 }
             }
         }
@@ -208,7 +210,7 @@ pipeline {
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
-                    sh """#!/bin/bash
+                    sh """
                         set -euo pipefail
 
                         echo "[INFO] 🔐 Connexion à Nexus Docker Registry..."
