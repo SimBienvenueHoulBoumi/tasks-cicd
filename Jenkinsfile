@@ -29,8 +29,7 @@ pipeline {
 
         SNYK_TARGET_FILE    = "pom.xml"
         SNYK_SEVERITY       = "high"
-        
-
+        DOCKER_BUILDKIT     = '1'
         SONAR_URL           = "http://sonarqube:9000"
     }
 
@@ -158,14 +157,13 @@ pipeline {
             }
         }
 
-        stage('🐳 Docker Build') {
+        stage('🐳 Build avec Buildx') {
             steps {
-                script {
-                    if (!fileExists('Dockerfile')) {
-                        error "Dockerfile is missing"
-                    }
-                }
-                sh 'docker build -t $IMAGE_TAG .'
+                sh '''
+                    docker buildx create --use --name myApp || true
+                    docker buildx inspect myApp --bootstrap
+                    docker buildx build --load -t $IMAGE_TAG .
+                '''
             }
         }
 
