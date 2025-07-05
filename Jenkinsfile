@@ -4,6 +4,7 @@ pipeline {
     tools {
         jdk 'jdk'
         maven 'maven'
+        git 'git'
     }
 
     environment {
@@ -101,11 +102,11 @@ pipeline {
 
                             sonar-scanner \
                                 -Dsonar.projectKey=${PROJET_NAME} \
-                                -Dsonar.verbose=true \
                                 -Dsonar.projectName=${PROJET_NAME} \
                                 -Dsonar.projectVersion=${PROJET_VERSION} \
                                 -Dsonar.host.url=http://sonarqube:9000 \
                                 -Dsonar.token=${SONARTOKEN} \
+                                -Dsonar.projectVersion=0.0.1 \
                                 -Dsonar.sources=src/ \
                                 -Dsonar.java.binaries=target/classes \
                                 -Dsonar.junit.reportsPath=target/surefire-reports/ \
