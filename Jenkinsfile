@@ -27,8 +27,6 @@ pipeline {
         TRIVY_OUTPUT_FS     = "${TRIVY_REPORT_DIR}/trivy-fs-report.json"
         TRIVY_OUTPUT_IMAGE  = "${TRIVY_REPORT_DIR}/trivy-image-report.json"
 
-        SNYK_JENKINS_NAME   = "snyk"  // nom défini dans Jenkins > Global Tool Configuration
-        SNYK_TOKEN_ID = "SNYK_AUTH_TOKEN" // ID dans Credentials
         SNYK_TARGET_FILE    = "pom.xml"
         SNYK_SEVERITY       = "high"
 
@@ -131,8 +129,7 @@ pipeline {
                 sh 'mkdir -p reports/snyk'
                 withCredentials([string(credentialsId: "${SNYK_TOKEN_ID}", variable: 'SNYK_TOKEN')]) {
                     snykSecurity(
-                        snykInstallation: "${SNYK_JENKINS_NAME}",              // Nom de l'installation définie dans Jenkins > Global Tool Configuration
-                        snykTokenId: "${SNYK_TOKEN_ID}",                        // ID Jenkins des credentials Snyk (secret text)
+                        snykTokenId: 'SNYK_AUTH_TOKEN',            // Nom de l'installation définie dans Jenkins > Global Tool Configuration
                         targetFile: "${SNYK_TARGET_FILE}",                      // Exemple : 'pom.xml' ou 'package.json'
                         severity: "${SNYK_SEVERITY}",                           // Exemple : 'low', 'medium', 'high'
                         monitorProjectOnBuild: true,                            // Envoie les résultats dans le dashboard Snyk
