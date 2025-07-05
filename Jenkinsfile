@@ -95,22 +95,20 @@ pipeline {
         stage('🔍 SonarQube Scan') {
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONARTOKEN')]) {
-                    // url http://sonarqube:9000 car jenkins et sonarQube sont dans un meme docker compose
                     withSonarQubeEnv('sonarserver') {
                         sh '''
                             sonar-scanner \
-                                -Dsonar.projectKey=${PROJET_NAME} \
-                                -Dsonar.host.url=http://sonarqube:9000 \  
-                                -Dsonar.projectName=${PROJET_NAME} \
-                                -Dsonar.projectVersion=${PROJET_VERSION} \
-                                -Dsonar.host.url=${SONAR_URL} \
-                                -Dsonar.sources=src/ \
-                                -Dsonar.java.libraries=target/classes \
-                                -Dsonar.token=${SONARTOKEN} \
-                                -Dsonar.java.binaries=target/classes \
-                                -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                                -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                                -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
+                            -Dsonar.projectKey=${PROJET_NAME} \
+                            -Dsonar.projectName=${PROJET_NAME} \
+                            -Dsonar.projectVersion=${PROJET_VERSION} \
+                            -Dsonar.host.url=http://sonarqube:9000 \
+                            -Dsonar.token=${SONARTOKEN} \
+                            -Dsonar.sources=src/ \
+                            -Dsonar.java.libraries=target/classes \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                            -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
                         '''
                     }
                 }
