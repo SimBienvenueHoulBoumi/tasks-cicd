@@ -29,6 +29,7 @@ pipeline {
 
         SNYK_TARGET_FILE    = "pom.xml"
         SNYK_SEVERITY       = "high"
+        
 
         SONAR_URL           = "http://sonarqube:9000"
     }
@@ -124,20 +125,23 @@ pipeline {
             }
         }
 
-        stage('🛡️ Snyk') {
+        stage('🛡️ Analyse Snyk') {
             steps {
-                script {
-                    sh 'mkdir -p reports/snyk'
+                withCredentials([string(credentialsId: 'SNYK_AUTH_TOKEN', variable: 'SNYK_TOKEN')]) {
+                    sh '''
+                        export JAVA_HOME=/opt/java/openjdk
+                        export PATH=$JAVA_HOME/bin:$PATH
+                        export SNYK_TOKEN=$SNYK_TOKEN
+
+                        mkdir -p reports/snyk
+
+                        snyk test --file=pom.xml \
+                            --severity-threshold=high \
+                            --report \
+                            --format=html \
+                            --report-file=reports/snyk/snyk_report.html
+                    '''
                 }
-                snykSecurity(
-                    snykTokenId: 'SNYK_AUTH_TOKEN',
-                    snykInstallation: 'snyk',
-                    targetFile: 'pom.xml',
-                    severity: 'high',
-                    monitorProjectOnBuild: true,
-                    failOnIssues: false,
-                    additionalArguments: '--report --format=html --report-file=reports/snyk/snyk_report.html'
-                )
             }
             post {
                 always {
@@ -147,7 +151,7 @@ pipeline {
                         keepAll: true,
                         reportDir: 'reports/snyk',
                         reportFiles: 'snyk_report.html',
-                        reportName: 'Snyk Report'
+                        reportName: 'Snyk Vulnerability Report'
                     ])
                 }
             }
