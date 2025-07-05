@@ -126,33 +126,32 @@ pipeline {
 
         stage('🛡️ Snyk') {
             steps {
-                sh 'mkdir -p reports/snyk'
-                withCredentials([string(credentialsId: "${SNYK_TOKEN_ID}", variable: 'SNYK_TOKEN')]) {
-                    snykSecurity(
-                        snykTokenId: 'SNYK_AUTH_TOKEN',            // Nom de l'installation définie dans Jenkins > Global Tool Configuration
-                        targetFile: "${SNYK_TARGET_FILE}",                      // Exemple : 'pom.xml' ou 'package.json'
-                        severity: "${SNYK_SEVERITY}",                           // Exemple : 'low', 'medium', 'high'
-                        monitorProjectOnBuild: true,                            // Envoie les résultats dans le dashboard Snyk
-                        failOnIssues: false,                                     // Fait échouer le build en cas de vulnérabilités
-                        additionalArguments: '--report --format=html --report-file=reports/snyk/snyk_report.html'
-                    )
+                script {
+                    sh 'mkdir -p reports/snyk'
                 }
+                snykSecurity(
+                    snykTokenId: 'SNYK_AUTH_TOKEN',
+                    snykInstallation: 'snyk',
+                    targetFile: 'pom.xml',
+                    severity: 'high',
+                    monitorProjectOnBuild: true,
+                    failOnIssues: false,
+                    additionalArguments: '--report --format=html --report-file=reports/snyk/snyk_report.html'
+                )
             }
             post {
                 always {
                     publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
                         reportDir: 'reports/snyk',
                         reportFiles: 'snyk_report.html',
-                        reportName: 'Snyk Report',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true,
-                        allowMissing: false
+                        reportName: 'Snyk Report'
                     ])
                 }
             }
-
         }
-
 
         stage('🐳 Docker Build') {
             steps {
