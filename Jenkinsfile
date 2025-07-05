@@ -103,7 +103,7 @@ pipeline {
                                 -Dsonar.projectVersion=${PROJET_VERSION} \
                                 -Dsonar.host.url=${SONAR_URL} \
                                 -Dsonar.sources=src/ \
-                                -Dsonar.java.libraries=target/classes / \
+                                -Dsonar.java.libraries=target/classes \
                                 -Dsonar.token=${SONARTOKEN} \
                                 -Dsonar.java.binaries=target/classes \
                                 -Dsonar.junit.reportsPath=target/surefire-reports/ \
