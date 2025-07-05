@@ -52,12 +52,12 @@ pipeline {
 
         stage('🧰 Maven Wrapper') {
             steps {
-                sh '''
+                sh """
                     if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
                         echo "Creating Maven Wrapper..."
                         mvn -N io.takari:maven:wrapper
                     fi
-                '''
+                """
             }
         }
 
@@ -101,16 +101,16 @@ pipeline {
                     sh """
                         ./mvnw clean install
 
-                        sonar-scanner \\
-                            -Dsonar.projectKey=$PROJET_NAME \\
-                            -Dsonar.projectName=$PROJET_NAME \\
-                            -Dsonar.projectVersion=$PROJET_VERSION \\
-                            -Dsonar.host.url=http://sonarqube:9000 \\
-                            -Dsonar.token=$SONAR_TOKEN \\
-                            -Dsonar.sources=src/ \\
-                            -Dsonar.java.binaries=target/classes \\
-                            -Dsonar.junit.reportsPath=target/surefire-reports/ \\
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \\
+                        sonar-scanner \
+                            -Dsonar.projectKey=$PROJET_NAME \
+                            -Dsonar.projectName=$PROJET_NAME \
+                            -Dsonar.projectVersion=$PROJET_VERSION \
+                            -Dsonar.host.url=http://sonarqube:9000 \
+                            -Dsonar.token=$SONAR_TOKEN \
+                            -Dsonar.sources=src/ \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
                             -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml
                     """
                 }
@@ -186,12 +186,12 @@ pipeline {
         stage('🖼️ Trivy Image') {
             steps {
                 sh """
-                    trivy image \$IMAGE_TAG \
+                    trivy image $IMAGE_TAG \
                         --timeout 10m \
                         --exit-code 0 \
-                        --severity \$TRIVY_SEVERITY \
+                        --severity $TRIVY_SEVERITY \
                         --format json \
-                        --output \$TRIVY_OUTPUT_IMAGE
+                        --output $TRIVY_OUTPUT_IMAGE
                 """
             }
             post {
@@ -212,16 +212,16 @@ pipeline {
                         set -euo pipefail
 
                         echo "[INFO] 🔐 Connexion à Nexus Docker Registry..."
-                        echo "$PASS" | docker login "$NEXUS_URL" -u "$USER" --password-stdin
+                        echo $PASS | docker login $NEXUS_URL -u $USER --password-stdin
 
                         echo "[INFO] 🏷️  Tag de l'image : $IMAGE_TAG → $IMAGE_FULL"
-                        docker tag "$IMAGE_TAG" "$IMAGE_FULL"
+                        docker tag $IMAGE_TAG $IMAGE_FULL
 
                         echo "[INFO] 📤 Push vers Nexus : $IMAGE_FULL"
-                        docker push "$IMAGE_FULL"
+                        docker push $IMAGE_FULL
 
                         echo "[INFO] 🔓 Déconnexion du registre Nexus"
-                        docker logout "$NEXUS_URL"
+                        docker logout $NEXUS_URL
                     """
                 }
             }
@@ -230,7 +230,7 @@ pipeline {
         stage('🧹 Cleanup') {
             steps {
                 sh """
-                    docker rmi \$IMAGE_TAG || true
+                    docker rmi $IMAGE_TAG || true
                     docker system prune -f
                 """
             }
