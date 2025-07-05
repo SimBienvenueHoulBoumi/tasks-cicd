@@ -131,10 +131,8 @@ pipeline {
                     sh '''
                         export JAVA_HOME=/opt/java/openjdk
                         export PATH=$JAVA_HOME/bin:$PATH
-                        export HOME=/tmp
 
-                        mkdir -p $HOME/.config/configstore
-                        snyk config set api=$SNYK_TOKEN
+                        export SNYK_TOKEN=$SNYK_TOKEN
 
                         mkdir -p reports/snyk
 
@@ -159,7 +157,6 @@ pipeline {
                 }
             }
         }
-
 
         stage('🐳 Docker Build') {
             steps {
