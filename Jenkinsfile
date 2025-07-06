@@ -103,7 +103,7 @@ pipeline {
                         sh '''#!/bin/bash
                             ./mvnw clean install
 
-                            sonar-scanner \
+                            sonarscanner \
                                 -Dsonar.projectKey=task-rest-api \
                                 -Dsonar.projectName=task-rest-api \
                                 -Dsonar.projectVersion=0.0.1 \
