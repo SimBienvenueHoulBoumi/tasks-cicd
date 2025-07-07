@@ -93,29 +93,27 @@ pipeline {
 
         stage('🛡️ Snyk') {
             steps {
-                snykSecurity (
-                    severity: 'high',
-                    snykInstallation: "${SNYK}",
-                    snykTokenId: 'SNYK_AUTH_TOKEN',
-                    targetFile: 'pom.xml',
-                    monitorProjectOnBuild: true,
-                    failOnIssues: false,
-                    additionalArguments: '--report --format=html --report-file=reports/snyk/snyk_report.html'
-                )
+                withCredentials([string(credentialsId: 'SNYK_AUTH_TOKEN', variable: 'SNYK_TOKEN')]) {
+                    sh '''
+                        mkdir -p reports/snyk
+                        snyk test --file=pom.xml --json | snyk-to-html -o reports/snyk/snyk_report.html
+                    '''
+                }
             }
             post {
                 always {
                     publishHTML([
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'reports/snyk',
+                        reportName : 'Snyk Vulnerability Report',
+                        reportDir  : 'reports/snyk',
                         reportFiles: 'snyk_report.html',
-                        reportName: 'Snyk Vulnerability Report'
+                        keepAll    : true,
+                        alwaysLinkToLastBuild: true,
+                        allowMissing: true
                     ])
                 }
             }
         }
+
 
         stage('🐳 Docker Build') {
             steps {
