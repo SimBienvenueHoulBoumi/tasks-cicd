@@ -26,6 +26,7 @@ pipeline {
         NEXUS_CREDENTIALS = "NEXUS_CREDENTIALS"
 
         SONAR_SERVER   = "SonarQube"
+        SONAR_URL      = "http://sonarqube:9000"
         SNYK           = "snyk"
         TRIVY_URL      = "http://localhost:4954/scan"
     }
@@ -74,6 +75,7 @@ pipeline {
                                 -Dsonar.junit.reportsPath=target/surefire-reports/ \
                                 -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
                                 -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
+                                -Dsonar.host.url=$SONAR_URL \
                                 -Dsonar.token=$SONAR_TOKEN
                         '''
                     }
