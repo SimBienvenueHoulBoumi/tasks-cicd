@@ -2,7 +2,6 @@ pipeline {
     agent { label 'jenkins-agent' }
 
     options {
-        skipDefaultCheckout(false)
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 30, unit: 'MINUTES')
         timestamps()
@@ -11,51 +10,31 @@ pipeline {
     tools {
         jdk 'jdk'
         maven 'maven'
-        git 'git'
     }
 
     environment {
-        APP_NAME           = "tasks-cicd"
-        BUILD_ID           = "0.0.1"
-        IMAGE_TAG          = "${APP_NAME}:${BUILD_NUMBER}"
-        PROJECT_NAME       = "task-rest-api"
-        PROJECT_VERSION    = "0.0.1"
+        APP_NAME         = "tasks-cicd"
+        IMAGE_TAG        = "${APP_NAME}:${BUILD_NUMBER}"
+        PROJECT_NAME     = "task-rest-api"
+        PROJECT_VERSION  = "0.0.1"
 
         GITHUB_URL         = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
         GITHUB_CREDENTIALS = "GITHUB-CREDENTIALS"
 
-        NEXUS_URL          = "http://nexus:8082"
-        IMAGE_FULL         = "${NEXUS_URL}/${PROJECT_NAME}:${BUILD_NUMBER}"
-        NEXUS_CREDENTIALS  = "NEXUS_CREDENTIALS"
+        NEXUS_URL         = "http://nexus:8082"
+        IMAGE_FULL        = "${NEXUS_URL}/${PROJECT_NAME}:${BUILD_NUMBER}"
+        NEXUS_CREDENTIALS = "NEXUS_CREDENTIALS"
 
-        SONAR_SERVER       = "sonarserver"
-        SONAR_SCANNER      = "sonarscanner"
-        SNYK               = "snyk"
-        TRIVY_URL          = "http://localhost:4954/scan"
+        SONAR_SERVER   = "SonarQube"
+        SNYK           = "snyk"
+        TRIVY_URL      = "http://localhost:4954/scan"
     }
 
     stages {
 
         stage('📥 Checkout') {
             steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: 'main']],
-                    userRemoteConfigs: [[
-                        url: "${GITHUB_URL}",
-                        credentialsId: "${GITHUB_CREDENTIALS}"
-                    ]]
-                ])
-            }
-        }
-
-        stage('🧰 Maven Wrapper') {
-            steps {
-                sh '''
-                    if [ ! -f "./mvnw" ] || [ ! -f "./.mvn/wrapper/maven-wrapper.properties" ]; then
-                        echo "Creating Maven Wrapper..."
-                        mvn -N io.takari:maven:wrapper
-                    fi
-                '''
+                checkout scm
             }
         }
 
@@ -81,29 +60,12 @@ pipeline {
             }
         }
 
-        stage('🧹 Checkstyle') {
-            steps {
-                sh './mvnw checkstyle:checkstyle'
-                sh 'mkdir -p reports && mv target/checkstyle-result.xml reports/'
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'reports/checkstyle-result.xml'
-                }
-            }
-        }
-
         stage('📊 SonarQube') {
-            environment {
-                SCANNER_HOME = tool SONAR_SCANNER
-            }
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv("${SONAR_SERVER}") {
-                        sh '''#!/bin/bash
-                            ./mvnw clean install
-
-                            sonarscanner \
+                        sh '''
+                            ./mvnw clean verify sonar:sonar \
                                 -Dsonar.projectKey=task-rest-api \
                                 -Dsonar.projectName=task-rest-api \
                                 -Dsonar.projectVersion=0.0.1 \
@@ -111,7 +73,7 @@ pipeline {
                                 -Dsonar.java.binaries=target/classes \
                                 -Dsonar.junit.reportsPath=target/surefire-reports/ \
                                 -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                                -Dsonar.java.checkstyle.reportPaths=reports/checkstyle-result.xml \
+                                -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
                                 -Dsonar.token=$SONAR_TOKEN
                         '''
                     }
@@ -161,19 +123,17 @@ pipeline {
 
         stage('🔬 Trivy') {
             steps {
-                script {
-                    sh '''
-                        sleep 10
-                        curl -s -X POST ${TRIVY_URL} \
-                          -H 'Content-Type: application/json' \
-                          -d '{
-                            "image_name": "${IMAGE_TAG}",
-                            "scan_type": "image",
-                            "vuln_type": ["os", "library"],
-                            "severity": ["CRITICAL", "HIGH"]
-                          }' > reports/trivy/trivy-report.json
-                    '''
-                }
+                sh '''
+                    mkdir -p reports/trivy
+                    curl -s -X POST ${TRIVY_URL} \
+                      -H 'Content-Type: application/json' \
+                      -d '{
+                        "image_name": "${IMAGE_TAG}",
+                        "scan_type": "image",
+                        "vuln_type": ["os", "library"],
+                        "severity": ["CRITICAL", "HIGH"]
+                      }' > reports/trivy/trivy-report.json
+                '''
             }
             post {
                 always {
@@ -189,8 +149,7 @@ pipeline {
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
-                    sh '''#!/bin/bash
-                        set -euo pipefail
+                    sh '''
                         echo "$PASS" | docker login "$NEXUS_URL" -u "$USER" --password-stdin
                         docker tag "$IMAGE_TAG" "$IMAGE_FULL"
                         docker push "$IMAGE_FULL"
