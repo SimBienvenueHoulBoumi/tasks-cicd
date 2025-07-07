@@ -28,7 +28,7 @@ pipeline {
         SONAR_SERVER   = "SonarQube"
         SONAR_URL      = "http://sonarqube:9000"
         SNYK           = "snyk"
-        TRIVY_URL      = "http://localhost:4954/scan"
+        TRIVY_URL      = "http://trivy:4954/scan"
     }
 
     stages {
@@ -55,8 +55,18 @@ pipeline {
                 sh './mvnw test'
             }
             post {
-                always {
-                    junit 'target/surefire-reports/*.xml'
+                post {
+                    always {
+                        junit 'target/surefire-reports/*.xml'
+                        publishHTML([
+                            reportName : 'JaCoCo Code Coverage',
+                            reportDir  : 'target/site/jacoco',
+                            reportFiles: 'index.html',
+                            keepAll    : true,
+                            alwaysLinkToLastBuild: true,
+                            allowMissing: true
+                        ])
+                    }
                 }
             }
         }
@@ -91,30 +101,6 @@ pipeline {
             }
         }
 
-        stage('🛡️ Snyk') {
-            steps {
-                withCredentials([string(credentialsId: 'SNYK_AUTH_TOKEN', variable: 'SNYK_TOKEN')]) {
-                    sh '''
-                        mkdir -p reports/snyk
-                        snyk test --file=pom.xml --json | snyk-to-html -o reports/snyk/snyk_report.html
-                    '''
-                }
-            }
-            post {
-                always {
-                    publishHTML([
-                        reportName : 'Snyk Vulnerability Report',
-                        reportDir  : 'reports/snyk',
-                        reportFiles: 'snyk_report.html',
-                        keepAll    : true,
-                        alwaysLinkToLastBuild: true,
-                        allowMissing: true
-                    ])
-                }
-            }
-        }
-
-
         stage('🐳 Docker Build') {
             steps {
                 sh "docker build -t ${IMAGE_TAG} ."
@@ -125,19 +111,29 @@ pipeline {
             steps {
                 sh '''
                     mkdir -p reports/trivy
-                    curl -s -X POST ${TRIVY_URL} \
-                      -H 'Content-Type: application/json' \
-                      -d '{
-                        "image_name": "${IMAGE_TAG}",
-                        "scan_type": "image",
-                        "vuln_type": ["os", "library"],
-                        "severity": ["CRITICAL", "HIGH"]
-                      }' > reports/trivy/trivy-report.json
+                    curl -s -X POST http://trivy:4954/scan \
+                        -H 'Content-Type: application/json' \
+                        -d "{
+                            \\"image_name\\": \\"${IMAGE_TAG}\\",
+                            \\"scan_type\\": \\"image\\",
+                            \\"vuln_type\\": [\\"os\\", \\"library\\"],
+                            \\"severity\\": [\\"CRITICAL\\", \\"HIGH\\"]
+                        }" > reports/trivy/trivy-report.json
+
+                    python3 scripts/generate_trivy_report.py reports/trivy/trivy-report.json reports/trivy/trivy-report.html
                 '''
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'reports/trivy/trivy-report.json'
+                    archiveArtifacts artifacts: 'reports/trivy/*.*'
+                    publishHTML([
+                        reportName : 'Trivy HTML Report',
+                        reportDir  : 'reports/trivy',
+                        reportFiles: 'trivy-report.html',
+                        keepAll    : true,
+                        alwaysLinkToLastBuild: true,
+                        allowMissing: true
+                    ])
                 }
             }
         }
@@ -167,19 +163,5 @@ pipeline {
                 '''
             }
         }
-    }
 
-    post {
-        always {
-            cleanWs()
-            publishHTML([
-                reportName : 'Trivy Report',
-                reportDir  : 'reports/trivy',
-                reportFiles: 'trivy-report.json',
-                keepAll    : true,
-                alwaysLinkToLastBuild: true,
-                allowMissing: true
-            ])
-        }
-    }
 }
