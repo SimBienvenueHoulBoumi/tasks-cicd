@@ -1,6 +1,5 @@
 package simple.tasks.controllers;
 
-import lombok.Generated;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.springframework.web.bind.annotation.*;
 import simple.tasks.dto.TasksDto;

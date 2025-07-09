@@ -10,6 +10,7 @@ pipeline {
     tools {
         jdk 'jdk'
         maven 'maven'
+        git 'git'
     }
 
     environment {
@@ -24,6 +25,7 @@ pipeline {
 
         SONAR_SERVER   = "SonarQube"
         SONAR_URL      = "http://sonarqube:9000"
+
         SNYK           = "snyk"
         TRIVY_URL      = "http://trivy:4954/scan"
 
@@ -31,10 +33,15 @@ pipeline {
     }
 
     stages {
-
         stage('📥 Checkout') {
             steps {
-                checkout scm
+                checkout([$class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        url: 'git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git',
+                        credentialsId: 'JENKINS_AGENT'
+                    ]]
+                ])
             }
         }
 
@@ -60,21 +67,21 @@ pipeline {
         stage('📊 SonarQube') {
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
-                    withSonarQubeEnv("${SONAR_SERVER}") {
-                        sh '''
-                            ./mvnw clean verify sonar:sonar \
-                                -Dsonar.projectKey=task-rest-api \
-                                -Dsonar.projectName=task-rest-api \
-                                -Dsonar.projectVersion=0.0.1 \
-                                -Dsonar.sources=src/ \
-                                -Dsonar.java.binaries=target/classes \
-                                -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                                -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                                -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
-                                -Dsonar.host.url=$SONAR_URL \
-                                -Dsonar.token=$SONAR_TOKEN
-                        '''
-                    }
+                withSonarQubeEnv("${SONAR_SERVER}") {
+                    sh '''
+                    ./mvnw clean verify sonar:sonar \
+                        -Dsonar.projectKey=task-rest-api \
+                        -Dsonar.projectName=task-rest-api \
+                        -Dsonar.projectVersion=0.0.1 \
+                        -Dsonar.sources=src/ \
+                        -Dsonar.java.binaries=target/classes \
+                        -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                        -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                        -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
+                        -Dsonar.host.url=$SONAR_URL \
+                        -Dsonar.token=$SONAR_TOKEN
+                    '''
+                }
                 }
             }
         }
