@@ -10,6 +10,7 @@ pipeline {
     tools {
         jdk 'jdk'
         maven 'maven'
+        git 'git'
     }
 
     environment {
@@ -17,9 +18,6 @@ pipeline {
         IMAGE_TAG        = "${APP_NAME}:${BUILD_NUMBER}"
         PROJECT_NAME     = "task-rest-api"
         PROJECT_VERSION  = "0.0.1"
-
-        GITHUB_URL         = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
-        GITHUB_CREDENTIALS = "GITHUB-CREDENTIALS"
 
         NEXUS_URL         = "http://nexus:8082"
         IMAGE_FULL        = "${NEXUS_URL}/${PROJECT_NAME}:${BUILD_NUMBER}"
@@ -101,6 +99,20 @@ pipeline {
             }
         }
 
+        stage('Snyk Dependency Scan') {
+            steps {
+                snykSecurity (
+                    severity: 'high',                         // 🚨 Niveau de menace minimum : high, medium, low
+                    snykInstallation: "snyk",                 // 🔧 Nom défini dans Jenkins pour Snyk CLI
+                    snykTokenId: 'SNYK_TOKEN',                // 🔑 ID de la clé d'API Snyk (stockée dans Jenkins Credentials)
+                    targetFile: 'pom.xml',                    // 📄 Fichier principal pour Maven
+                    monitorProjectOnBuild: true,              // 📡 Envoi automatique des résultats sur Snyk.io
+                    failOnIssues: true,                       // ❌ Échoue le pipeline en cas de vulnérabilités
+                    additionalArguments: '--report --format=html --report-file=snyk_report.html' // 📃 Génère un rapport HTML
+                ) 
+            } 
+        }
+
         stage('🐳 Docker Build') {
             steps {
                 sh "docker build -t ${IMAGE_TAG} ."
@@ -164,4 +176,5 @@ pipeline {
             }
         }
 
+    }
 }
