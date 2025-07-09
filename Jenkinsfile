@@ -10,7 +10,6 @@ pipeline {
     tools {
         jdk 'jdk'
         maven 'maven'
-        git 'git'
     }
 
     environment {
@@ -27,6 +26,8 @@ pipeline {
         SONAR_URL      = "http://sonarqube:9000"
         SNYK           = "snyk"
         TRIVY_URL      = "http://trivy:4954/scan"
+
+        NVD_API_KEY = credentials('NVD_API_KEY')
     }
 
     stages {
@@ -37,34 +38,21 @@ pipeline {
             }
         }
 
-        stage('🏗️ Build') {
-            steps {
-                sh './mvnw clean package -DskipTests'
-            }
-            post {
-                success {
-                    archiveArtifacts artifacts: 'target/*.jar'
-                }
-            }
-        }
-
         stage('🧪 Tests') {
             steps {
-                sh './mvnw test'
+                sh './mvnw verify'
             }
             post {
-                post {
-                    always {
-                        junit 'target/surefire-reports/*.xml'
-                        publishHTML([
-                            reportName : 'JaCoCo Code Coverage',
-                            reportDir  : 'target/site/jacoco',
-                            reportFiles: 'index.html',
-                            keepAll    : true,
-                            alwaysLinkToLastBuild: true,
-                            allowMissing: true
-                        ])
-                    }
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                    publishHTML([
+                        reportName : 'JaCoCo Code Coverage',
+                        reportDir  : 'target/site/jacoco',
+                        reportFiles: 'index.html',
+                        keepAll    : true,
+                        alwaysLinkToLastBuild: true,
+                        allowMissing: true
+                    ])
                 }
             }
         }
@@ -99,23 +87,63 @@ pipeline {
             }
         }
 
-        stage('Snyk Dependency Scan') {
+        stage('🔐 Snyk Scan') {
             steps {
                 snykSecurity (
-                    severity: 'high',                         // 🚨 Niveau de menace minimum : high, medium, low
-                    snykInstallation: "snyk",                 // 🔧 Nom défini dans Jenkins pour Snyk CLI
-                    snykTokenId: 'SNYK_TOKEN',                // 🔑 ID de la clé d'API Snyk (stockée dans Jenkins Credentials)
-                    targetFile: 'pom.xml',                    // 📄 Fichier principal pour Maven
-                    monitorProjectOnBuild: true,              // 📡 Envoi automatique des résultats sur Snyk.io
-                    failOnIssues: true,                       // ❌ Échoue le pipeline en cas de vulnérabilités
-                    additionalArguments: '--report --format=html --report-file=snyk_report.html' // 📃 Génère un rapport HTML
-                ) 
-            } 
+                    severity: 'high',
+                    snykInstallation: "snyk",
+                    snykTokenId: 'SNYK_TOKEN',
+                    targetFile: 'pom.xml',
+                    monitorProjectOnBuild: true,
+                    failOnIssues: true,
+                    additionalArguments: '--report --format=html --report-file=snyk_report.html'
+                )
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'snyk_report.html', allowEmptyArchive: true
+                    publishHTML([
+                        reportName: 'Snyk Report',
+                        reportDir: '.',
+                        reportFiles: 'snyk_report.html',
+                        keepAll: true,
+                        alwaysLinkToLastBuild: true,
+                        allowMissing: true
+                    ])
+                }
+            }
+        }
+
+        stage('🛡️ OWASP Dependency Check') {
+            steps {
+                sh '''
+                    echo "[INFO] Lancement de l’analyse de vulnérabilités..."
+                    dependency-check.sh --project my-app \
+                        --scan . \
+                        --nvdApiKey $NVD_API_KEY \
+                        --format HTML \
+                        --out reports/owasp/
+                '''
+            }
+        }
+
+        stage('🏗️ Build') {
+            steps {
+                sh './mvnw package -DskipTests'
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'target/*.jar'
+                }
+            }
         }
 
         stage('🐳 Docker Build') {
             steps {
-                sh "docker build -t ${IMAGE_TAG} ."
+                sh """
+                    docker build -t ${IMAGE_TAG} .
+                    docker tag ${IMAGE_TAG} ${NEXUS_URL}/${PROJECT_NAME}:latest
+                """
             }
         }
 
@@ -159,8 +187,8 @@ pipeline {
                 )]) {
                     sh '''
                         echo "$PASS" | docker login "$NEXUS_URL" -u "$USER" --password-stdin
-                        docker tag "$IMAGE_TAG" "$IMAGE_FULL"
-                        docker push "$IMAGE_FULL"
+                        docker push "$IMAGE_TAG"
+                        docker push "${NEXUS_URL}/${PROJECT_NAME}:latest"
                         docker logout "$NEXUS_URL"
                     '''
                 }
@@ -171,10 +199,24 @@ pipeline {
             steps {
                 sh '''
                     docker rmi "${IMAGE_TAG}" || true
+                    docker rmi "${NEXUS_URL}/${PROJECT_NAME}:latest" || true
                     docker system prune -f
                 '''
             }
         }
 
+    }
+
+    post {
+        always {
+            publishHTML([
+                reportName : 'OWASP Dependency-Check',
+                reportDir  : 'reports/owasp',
+                reportFiles: 'dependency-check-report.html',
+                keepAll    : true,
+                alwaysLinkToLastBuild: true,
+                allowMissing: true
+            ])
+        }
     }
 }

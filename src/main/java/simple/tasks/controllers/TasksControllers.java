@@ -1,34 +1,38 @@
 package simple.tasks.controllers;
 
-
+import lombok.Generated;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.springframework.web.bind.annotation.*;
 import simple.tasks.dto.TasksDto;
 import simple.tasks.models.Tasks;
-import simple.tasks.services.DeleteTask;
-import simple.tasks.services.TasksCreateTask;
-import simple.tasks.services.TasksGetAllTasks;
-import simple.tasks.services.TasksGetTaskById;
-import simple.tasks.services.UpdateTask;
-
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import simple.tasks.services.*;
 
 import java.util.List;
+import java.util.Objects;
 
-import lombok.AllArgsConstructor;
-
-@AllArgsConstructor
 @RestController
 public class TasksControllers {
     private final TasksCreateTask createTasksService;
     private final TasksGetTaskById tasksGetTaskByIdService;
     private final TasksGetAllTasks tasksGetAllTasks;
     private final UpdateTask updateTasksService;
+
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Bean Spring injecté de manière sûre")
     private final DeleteTask deleteTasksService;
+
+    public TasksControllers(
+        TasksCreateTask createTasksService,
+        TasksGetTaskById tasksGetTaskByIdService,
+        TasksGetAllTasks tasksGetAllTasks,
+        UpdateTask updateTasksService,
+        DeleteTask deleteTasksService
+    ) {
+        this.createTasksService = Objects.requireNonNull(createTasksService);
+        this.tasksGetTaskByIdService = Objects.requireNonNull(tasksGetTaskByIdService);
+        this.tasksGetAllTasks = Objects.requireNonNull(tasksGetAllTasks);
+        this.updateTasksService = Objects.requireNonNull(updateTasksService);
+        this.deleteTasksService = Objects.requireNonNull(deleteTasksService);
+    }
 
     @GetMapping("/tasks")
     public List<Tasks> getAllTasks() {
@@ -46,7 +50,7 @@ public class TasksControllers {
     }
 
     @PutMapping("/tasks/{id}")
-    public Tasks updateTask(@PathVariable Long id,@RequestBody TasksDto task) {
+    public Tasks updateTask(@PathVariable Long id, @RequestBody TasksDto task) {
         return updateTasksService.updateTask(id, task);
     }
 
