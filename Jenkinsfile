@@ -164,7 +164,7 @@ pipeline {
             }
         }
 
-        stage('🐳 Nexus Docker Build') {
+        stage('🐳 Docker Build') {
             steps {
                 sh """
                     docker build -t image:tag .
