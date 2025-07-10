@@ -216,11 +216,12 @@ pipeline {
                     passwordVariable: 'PASS'
                 )]) {
                     sh '''
-                        echo "$PASS" | docker login "$NEXUS_URL" -u "$USER" --password-stdin
+                        echo "$PASS" | docker login http://nexus:8082 -u "$USER" --password-stdin
                         docker tag ${IMAGE_TAG} ${IMAGE_FULL}
                         docker push ${IMAGE_FULL}
-                        docker logout "$NEXUS_URL"
+                        docker logout http://nexus:8082
                     '''
+
                 }
             }
         }
