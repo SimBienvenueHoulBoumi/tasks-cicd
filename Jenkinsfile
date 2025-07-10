@@ -64,6 +64,14 @@ pipeline {
             }
         }
 
+        stage('Debug SonarQube') {
+            steps {
+                sh 'ping -c 3 sonarqube'
+                sh 'curl -v http://sonarqube:9000/api/system/status'
+            }
+        }
+
+
         stage('📊 SonarQube') {
             steps {
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
