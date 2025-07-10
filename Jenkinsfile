@@ -19,7 +19,7 @@ pipeline {
         PROJECT_NAME     = "task-rest-api"
         PROJECT_VERSION  = "0.0.1"
 
-        NEXUS_URL         = "http://nexus:8082"
+        NEXUS_URL         = "nexus:8082"
         IMAGE_FULL        = "${NEXUS_URL}/${PROJECT_NAME}:${BUILD_NUMBER}"
         NEXUS_CREDENTIALS = "NEXUS_CREDENTIALS"
 
@@ -168,7 +168,7 @@ pipeline {
             steps {
                 sh """
                     sudo docker build -t image:tag .
-                    docker tag ${IMAGE_TAG} ${NEXUS_URL}/${PROJECT_NAME}:latest
+                    docker tag ${IMAGE_TAG} ${IMAGE_FULL}
                 """
             }
         }
@@ -213,8 +213,8 @@ pipeline {
                 )]) {
                     sh '''
                         echo "$PASS" | docker login "$NEXUS_URL" -u "$USER" --password-stdin
-                        docker push "$IMAGE_TAG"
-                        docker push "${NEXUS_URL}/${PROJECT_NAME}:latest"
+                        docker tag ${IMAGE_TAG} ${IMAGE_FULL}
+                        docker push ${IMAGE_FULL}
                         docker logout "$NEXUS_URL"
                     '''
                 }
@@ -224,9 +224,18 @@ pipeline {
         stage('🧹 Cleanup') {
             steps {
                 sh '''
-                    docker rmi "${IMAGE_TAG}" || true
-                    docker rmi "${NEXUS_URL}/${PROJECT_NAME}:latest" || true
-                    docker system prune -f
+                    echo "[INFO] Suppression des images..."
+                    docker rmi ${IMAGE_TAG} || true
+                    docker rmi ${IMAGE_FULL} || true
+
+                    echo "[INFO] Suppression des conteneurs stoppés..."
+                    docker container prune -f || true
+
+                    echo "[INFO] Suppression des volumes inutilisés..."
+                    docker volume prune -f || true
+
+                    echo "[INFO] Nettoyage du système (réseaux, build cache, etc)..."
+                    docker system prune -af --volumes || true
                 '''
             }
         }
