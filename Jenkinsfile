@@ -94,21 +94,19 @@ pipeline {
             }
         }
 
-   stage('🔐 Snyk Scan') {
+        stage('🔐 Snyk Scan') {
             steps {
-                snykSecurity(
-                    snykInstallation: 'snyk',              // Nom de l'installation déclarée dans Jenkins
-                    snykTokenId: 'SNYK_TOKEN',             // ID du credential de type "Snyk API token"
-                    severity: 'high',
-                    targetFile: 'pom.xml',
-                    failOnIssues: true,
-                    monitorProjectOnBuild: true,
-                    additionalArguments: '--report --format=html --report-file=snyk_report.html'
-                )
+                withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
+                    sh '''
+                        snyk auth $SNYK_TOKEN
+                        snyk test --severity-threshold=high --file=pom.xml --json > snyk_report.json || true
+                        snyk-to-html -i snyk_report.json -o snyk_report.html
+                    '''
+                }
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'snyk_report.html', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'snyk_report.*', allowEmptyArchive: true
                     publishHTML([
                         reportName: 'Snyk Report',
                         reportDir: '.',
@@ -121,18 +119,30 @@ pipeline {
             }
         }
 
-
         stage('🛡️ OWASP Dependency Check') {
             steps {
                 sh '''
                     echo "[INFO] Lancement de l’analyse de vulnérabilités..."
-                    dependency-check.sh --project my-app \
+                    dependency-check.sh --project tasks \
                         --scan . \
                         --nvdApiKey $NVD_API_KEY \
                         --format HTML \
                         --out reports/owasp/
                 '''
             }
+        post {
+            always {
+            archiveArtifacts artifacts: 'reports/owasp/dependency-check-report.html', allowEmptyArchive: true
+            publishHTML([
+                reportName: 'OWASP Dependency-Check',
+                reportDir: 'reports/owasp',
+                reportFiles: 'dependency-check-report.html',
+                keepAll: true,
+                alwaysLinkToLastBuild: true,
+                allowMissing: true
+            ])
+            }
+          }
         }
 
         stage('🏗️ Build') {
