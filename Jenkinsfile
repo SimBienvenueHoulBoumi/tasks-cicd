@@ -131,36 +131,29 @@ pipeline {
             }
         }
 
-       stage('🛡️ OWASP Dependency Check') {
+      stage('🛡️ OWASP Dependency Check') {
             steps {
                 script {
                     echo '[INFO] Lancement de l’analyse de vulnérabilités...'
-                }
-
-               steps {
                     sh './mvnw org.owasp:dependency-check-maven:check'
-                }
-                post {
-                    always {
-                        archiveArtifacts artifacts: '**/dependency-check-report.html', allowEmptyArchive: true
-                    }
                 }
             }
 
             post {
                 always {
+                    archiveArtifacts artifacts: '**/dependency-check-report.html', allowEmptyArchive: true
                     publishHTML([
                         allowMissing: true,
                         alwaysLinkToLastBuild: true,
                         keepAll: true,
-                        reportDir: 'reports/owasp',
+                        reportDir: 'target/dependency-check-report',
                         reportFiles: 'dependency-check-report.html',
                         reportName: 'OWASP Dependency-Check'
                     ])
                 }
             }
-
         }
+
 
         stage('🏗️ Build') {
             steps {
