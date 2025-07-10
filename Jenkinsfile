@@ -31,6 +31,9 @@ pipeline {
         TRIVY_URL      = "http://trivy:4954/scan"
 
         NVD_API_KEY = credentials('NVD_API_KEY')
+
+        DOCKER_TLS_VERIFY  = ""
+        DOCKER_CERT_PATH   = ""
     }
 
     stages {
@@ -242,5 +245,15 @@ pipeline {
         }
 
     }
+
+    post {
+        failure {
+            echo "[Pipeline] ❌ Build échoué — pensez à consulter les logs et rapports."
+        }
+        always {
+            archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
+        }
+    }
+
 
 }
