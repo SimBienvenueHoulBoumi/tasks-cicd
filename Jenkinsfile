@@ -95,30 +95,28 @@ pipeline {
         }
 
         stage('🔐 Snyk Scan') {
-            steps {
-                snykSecurity (
-                    severity: 'high',
-                    snykInstallation: 'snyk',
-                    snykTokenId: 'SNYK_TOKEN',
-                    targetFile: 'pom.xml',
-                    monitorProjectOnBuild: true,
-                    failOnIssues: true,
-                    additionalArguments: '--report --format=html --report-file=snyk_report.html'
-                )
+        steps {
+            withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
+            sh '''
+                snyk auth $SNYK_TOKEN
+                snyk test --severity-threshold=high --file=pom.xml \
+                --report --format=html --report-file=snyk_report.html
+            '''
             }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'snyk_report.html', allowEmptyArchive: true
-                    publishHTML([
-                        reportName: 'Snyk Report',
-                        reportDir: '.',
-                        reportFiles: 'snyk_report.html',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true,
-                        allowMissing: true
-                    ])
-                }
+        }
+        post {
+            always {
+            archiveArtifacts artifacts: 'snyk_report.html', allowEmptyArchive: true
+            publishHTML([
+                reportName: 'Snyk Report',
+                reportDir: '.',
+                reportFiles: 'snyk_report.html',
+                keepAll: true,
+                alwaysLinkToLastBuild: true,
+                allowMissing: true
+            ])
             }
+        }
         }
 
         stage('🛡️ OWASP Dependency Check') {
