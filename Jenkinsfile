@@ -20,8 +20,8 @@ pipeline {
         PROJECT_NAME     = "task-rest-api"
         PROJECT_VERSION  = "0.0.1"
 
-        NEXUS_URL         = "nexus:8082"
-        IMAGE_FULL        = "${NEXUS_URL}/${PROJECT_NAME}:${BUILD_NUMBER}"
+        NEXUS_URL        = "http://nexus:8082"
+        IMAGE_FULL       = "simdev/${PROJECT_NAME}:${BUILD_NUMBER}"
         NEXUS_CREDENTIALS = "NEXUS_CREDENTIALS"
 
         SONAR_SERVER   = "SonarQube"
