@@ -54,7 +54,7 @@ pipeline {
                     junit 'target/surefire-reports/*.xml'
                     publishHTML([
                         reportName : 'JaCoCo Code Coverage',
-                        reportDir  : 'target/site/jacoco',
+                        reportDir  : 'target/jacoco',
                         reportFiles: 'index.html',
                         keepAll    : true,
                         alwaysLinkToLastBuild: true,
@@ -98,7 +98,7 @@ pipeline {
             steps {
                 snykSecurity (
                     severity: 'high',
-                    snykInstallation: "snyk",
+                    snykInstallation: 'snyk',
                     snykTokenId: 'SNYK_TOKEN',
                     targetFile: 'pom.xml',
                     monitorProjectOnBuild: true,
