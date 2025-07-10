@@ -66,11 +66,12 @@ pipeline {
 
         stage('Debug SonarQube') {
             steps {
-                sh 'ping -c 3 sonarqube'
-                sh 'curl -v http://sonarqube:9000/api/system/status'
+                sh '''
+                    echo "[INFO] Test DNS SonarQube avec curl"
+                    curl -v http://sonarqube:9000/api/system/status || echo "ECHEC"
+                '''
             }
         }
-
 
         stage('📊 SonarQube') {
             steps {
@@ -86,6 +87,7 @@ pipeline {
                         -Dsonar.junit.reportsPath=target/surefire-reports/ \
                         -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
                         -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
+                        -Dsonar.exclusions=**/target/**,**/test/**,**/*.json,**/*.yml \
                         -Dsonar.host.url=$SONAR_URL \
                         -Dsonar.token=$SONAR_TOKEN
                     '''
