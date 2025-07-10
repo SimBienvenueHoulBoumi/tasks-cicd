@@ -110,21 +110,23 @@ pipeline {
                     sh '''
                         snyk auth $SNYK_TOKEN
                         snyk test --severity-threshold=high --file=pom.xml --json > snyk_report.json || true
-                        snyk-to-html -i snyk_report.json -o snyk_report.html
+                        mkdir -p reports/snyk
+                        snyk-to-html -i snyk_report.json -o reports/snyk/snyk-report.html
                     '''
                 }
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'snyk_report.*', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'reports/snyk/snyk-report.*', allowEmptyArchive: true
                     publishHTML([
                         reportName: 'Snyk Report',
-                        reportDir: '.',
-                        reportFiles: 'snyk_report.html',
+                        reportDir: 'reports/snyk',
+                        reportFiles: 'snyk-report.html',
                         keepAll: true,
                         alwaysLinkToLastBuild: true,
                         allowMissing: true
                     ])
+
                 }
             }
         }
@@ -245,16 +247,4 @@ pipeline {
 
     }
 
-    post {
-        always {
-            publishHTML([
-                reportName : 'OWASP Dependency-Check',
-                reportDir  : 'reports/owasp',
-                reportFiles: 'dependency-check-report.html',
-                keepAll    : true,
-                alwaysLinkToLastBuild: true,
-                allowMissing: true
-            ])
-        }
-    }
 }
