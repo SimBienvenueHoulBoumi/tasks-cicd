@@ -71,7 +71,7 @@ pipeline {
                     echo "[INFO] Test DNS SonarQube avec curl"
                     curl -v http://sonarqube:9000/api/system/status || echo "ECHEC"
                 '''
-                
+
                 echo '[Étape 2] Analyse SonarQube'
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv("${SONAR_SERVER}") {
@@ -167,7 +167,7 @@ pipeline {
         stage('🐳 Docker Build') {
             steps {
                 sh """
-                    docker build -t ${IMAGE_TAG} .
+                    sudo docker build -t image:tag .
                     docker tag ${IMAGE_TAG} ${NEXUS_URL}/${PROJECT_NAME}:latest
                 """
             }
