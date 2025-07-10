@@ -64,34 +64,32 @@ pipeline {
             }
         }
 
-        stage('Debug SonarQube') {
+        stage('📊 SonarQube') {
             steps {
+                echo '[Étape 1] Vérification DNS SonarQube'
                 sh '''
                     echo "[INFO] Test DNS SonarQube avec curl"
                     curl -v http://sonarqube:9000/api/system/status || echo "ECHEC"
                 '''
-            }
-        }
-
-        stage('📊 SonarQube') {
-            steps {
+                
+                echo '[Étape 2] Analyse SonarQube'
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
-                withSonarQubeEnv("${SONAR_SERVER}") {
-                    sh '''
-                    ./mvnw clean verify sonar:sonar \
-                        -Dsonar.projectKey=task-rest-api \
-                        -Dsonar.projectName=task-rest-api \
-                        -Dsonar.projectVersion=0.0.1 \
-                        -Dsonar.sources=src/ \
-                        -Dsonar.java.binaries=target/classes \
-                        -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                        -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                        -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
-                        -Dsonar.exclusions=**/target/**,**/test/**,**/*.json,**/*.yml \
-                        -Dsonar.host.url=$SONAR_URL \
-                        -Dsonar.token=$SONAR_TOKEN
-                    '''
-                }
+                    withSonarQubeEnv("${SONAR_SERVER}") {
+                        sh '''
+                        ./mvnw clean verify sonar:sonar \
+                            -Dsonar.projectKey=task-rest-api \
+                            -Dsonar.projectName=task-rest-api \
+                            -Dsonar.projectVersion=0.0.1 \
+                            -Dsonar.sources=src/ \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                            -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
+                            -Dsonar.exclusions=**/target/**,**/test/**,**/*.json,**/*.yml \
+                            -Dsonar.host.url=$SONAR_URL \
+                            -Dsonar.token=$SONAR_TOKEN
+                        '''
+                    }
                 }
             }
         }
