@@ -137,18 +137,14 @@ pipeline {
                     echo '[INFO] Lancement de l’analyse de vulnérabilités...'
                 }
 
-                sh '''
-                    mkdir -p reports/owasp
-
-                    docker run --rm \
-                        -v $(pwd):/src \
-                        -v $HOME/.dependency-check:/usr/share/dependency-check/data \
-                        owasp/dependency-check \
-                        --project "tasks" \
-                        --scan /src \
-                        --format "HTML" \
-                        --out /src/reports/owasp
-                '''
+               steps {
+                    sh './mvnw org.owasp:dependency-check-maven:check'
+                }
+                post {
+                    always {
+                        archiveArtifacts artifacts: '**/dependency-check-report.html', allowEmptyArchive: true
+                    }
+                }
             }
 
             post {
@@ -165,7 +161,6 @@ pipeline {
             }
 
         }
-
 
         stage('🏗️ Build') {
             steps {
