@@ -171,7 +171,7 @@ pipeline {
         stage('🐳 Docker Build') {
             steps {
                 sh """
-                    docker build -t image:tag .
+                    docker build -t ${IMAGE_TAG} .
                     docker tag ${IMAGE_TAG} ${IMAGE_FULL}
                 """
             }
