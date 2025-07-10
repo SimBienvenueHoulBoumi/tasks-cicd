@@ -129,31 +129,41 @@ pipeline {
             }
         }
 
-        stage('🛡️ OWASP Dependency Check') {
+       stage('🛡️ OWASP Dependency Check') {
             steps {
+                script {
+                    echo '[INFO] Lancement de l’analyse de vulnérabilités...'
+                }
+
                 sh '''
-                    echo "[INFO] Lancement de l’analyse de vulnérabilités..."
-                    dependency-check.sh --project tasks \
-                        --scan . \
-                        --nvdApiKey $NVD_API_KEY \
-                        --format HTML \
-                        --out reports/owasp/
+                    mkdir -p reports/owasp
+
+                    docker run --rm \
+                        -v $(pwd):/src \
+                        -v $HOME/.dependency-check:/usr/share/dependency-check/data \
+                        owasp/dependency-check \
+                        --project "tasks" \
+                        --scan /src \
+                        --format "HTML" \
+                        --out /src/reports/owasp
                 '''
             }
-        post {
-            always {
-            archiveArtifacts artifacts: 'reports/owasp/dependency-check-report.html', allowEmptyArchive: true
-            publishHTML([
-                reportName: 'OWASP Dependency-Check',
-                reportDir: 'reports/owasp',
-                reportFiles: 'dependency-check-report.html',
-                keepAll: true,
-                alwaysLinkToLastBuild: true,
-                allowMissing: true
-            ])
+
+            post {
+                always {
+                    publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'reports/owasp',
+                        reportFiles: 'dependency-check-report.html',
+                        reportName: 'OWASP Dependency-Check'
+                    ])
+                }
             }
-          }
+
         }
+
 
         stage('🏗️ Build') {
             steps {
