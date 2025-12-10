@@ -1,7 +1,9 @@
 pipeline {
-    agent { 
-        label 'jenkins-agent' ,
-        customWorkspace: '/home/jenkins/agent'
+    agent {
+        node {
+            label 'jenkins-agent'
+            customWorkspace '/home/jenkins/agent'
+        }
     }
 
     options {
