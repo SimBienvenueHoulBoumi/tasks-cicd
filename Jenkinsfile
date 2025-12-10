@@ -72,10 +72,9 @@ pipeline {
 
                 echo '[Étape 2] Analyse SonarQube'
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
-                    withSonarQubeEnv("${SONAR_SERVER}") {
-                        sh '''
+                    sh '''
                         ./mvnw clean verify sonar:sonar \
-                            -Dsonar.host.url=http://sonarqube:9000 \
+                            -Dsonar.host.url=$SONAR_URL \
                             -Dsonar.login=$SONAR_TOKEN \
                             -Dsonar.projectKey=task-rest-api \
                             -Dsonar.projectName=task-rest-api \
@@ -85,11 +84,8 @@ pipeline {
                             -Dsonar.junit.reportsPath=target/surefire-reports/ \
                             -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
                             -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
-                            -Dsonar.exclusions=**/target/**,**/test/**,**/*.json,**/*.yml \
-                            -Dsonar.host.url=$SONAR_URL \
-                            -Dsonar.token=$SONAR_TOKEN
-                        '''
-                    }
+                            -Dsonar.exclusions=**/target/**,**/test/**,**/*.json,**/*.yml
+                    '''
                 }
             }
         }
