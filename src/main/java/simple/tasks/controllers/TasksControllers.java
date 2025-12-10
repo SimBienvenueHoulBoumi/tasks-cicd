@@ -1,5 +1,6 @@
 package simple.tasks.controllers;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.springframework.web.bind.annotation.*;
 import simple.tasks.dto.TasksDto;
 import simple.tasks.models.Tasks;
@@ -8,6 +9,7 @@ import simple.tasks.services.*;
 import java.util.List;
 import java.util.Objects;
 
+@SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Spring services are injected once and treated as immutable dependencies")
 @RestController
 public class TasksControllers {
     private final TasksCreateTask createTasksService;
