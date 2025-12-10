@@ -94,10 +94,18 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
                     sh '''
-                        snyk auth $SNYK_TOKEN
-                        snyk test --severity-threshold=high --file=pom.xml --json > snyk_report.json || true
                         mkdir -p reports/snyk
-                        snyk-to-html -i snyk_report.json -o reports/snyk/snyk-report.html
+
+                        # Lancement de Snyk via l'image Docker officielle
+                        docker run --rm \
+                          -e SNYK_TOKEN=$SNYK_TOKEN \
+                          -v "$(pwd)":/project \
+                          -w /project \
+                          snyk/snyk:docker \
+                          snyk test --severity-threshold=high --file=pom.xml --json > reports/snyk/snyk-report.json || true
+
+                        # Si tu as l'outil snyk-to-html dans ton image, tu peux générer un rapport HTML.
+                        # Pour l'instant on archive surtout le JSON.
                     '''
                 }
             }
