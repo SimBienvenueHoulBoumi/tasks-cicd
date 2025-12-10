@@ -57,14 +57,7 @@ pipeline {
             post {
                 always {
                     junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
-                    publishHTML([
-                        reportName : 'JaCoCo Code Coverage',
-                        reportDir  : 'target/jacoco',
-                        reportFiles: 'index.html',
-                        keepAll    : true,
-                        alwaysLinkToLastBuild: true,
-                        allowMissing: true
-                    ])
+                    // publishHTML(...) désactivé : plugin HTML Publisher non installé
                 }
             }
         }
@@ -121,15 +114,7 @@ pipeline {
             post {
                 always {
                     archiveArtifacts artifacts: 'reports/snyk/snyk-report.*', allowEmptyArchive: true
-                    publishHTML([
-                        reportName: 'Snyk Report',
-                        reportDir: 'reports/snyk',
-                        reportFiles: 'snyk-report.html',
-                        keepAll: true,
-                        alwaysLinkToLastBuild: true,
-                        allowMissing: true
-                    ])
-
+                    // publishHTML(...) désactivé : plugin HTML Publisher non installé
                 }
             }
         }
@@ -145,14 +130,7 @@ pipeline {
             post {
                 always {
                     archiveArtifacts artifacts: '**/dependency-check-report.html', allowEmptyArchive: true
-                    publishHTML([
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'target',
-                        reportFiles: 'dependency-check-report.html',
-                        reportName: 'OWASP Dependency-Check'
-                    ])
+                    // publishHTML(...) désactivé : plugin HTML Publisher non installé
                 }
             }
         }
@@ -197,14 +175,7 @@ pipeline {
             post {
                 always {
                     archiveArtifacts artifacts: 'reports/trivy/*.*'
-                    publishHTML([
-                        reportName : 'Trivy HTML Report',
-                        reportDir  : 'reports/trivy',
-                        reportFiles: 'trivy-report.html',
-                        keepAll    : true,
-                        alwaysLinkToLastBuild: true,
-                        allowMissing: true
-                    ])
+                    // publishHTML(...) désactivé : plugin HTML Publisher non installé
                 }
             }
         }
