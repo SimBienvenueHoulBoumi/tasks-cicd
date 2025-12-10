@@ -1,5 +1,8 @@
 pipeline {
-    agent { label 'jenkins-agent' }
+    agent { 
+        label 'jenkins-agent' ,
+        customWorkspace: '/home/jenkins/agent'
+    }
 
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))

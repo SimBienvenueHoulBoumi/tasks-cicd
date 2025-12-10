@@ -55,10 +55,11 @@
         <artifactId>spring-boot-starter-data-jpa</artifactId>
     </dependency>
 
-    <!-- PostgreSQL JDBC Driver -->
+    <!-- H2 Database for testing -->
     <dependency>
-        <groupId>org.postgresql</groupId>
-        <artifactId>postgresql</artifactId>
+        <groupId>com.h2database</groupId>
+        <artifactId>h2</artifactId>
+        <scope>runtime</scope>
     </dependency>
 
         <dependency>
@@ -79,11 +80,7 @@
             <version>5.12.0</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.7.2</version>
-        </dependency>
+
             <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
@@ -94,13 +91,6 @@
             <groupId>com.diffplug.spotless</groupId>
             <artifactId>spotless-maven-plugin</artifactId>
             <version>2.44.5</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/com.github.spotbugs/spotbugs -->
-        <dependency>
-            <groupId>com.github.spotbugs</groupId>
-            <artifactId>spotbugs</artifactId>
-            <version>4.9.3</version>
-            <type>pom</type>
         </dependency>
     </dependencies>
 
@@ -180,15 +170,14 @@
                             <goal>spotbugs</goal>
                         </goals>
                     </execution>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
                 </executions>
             </plugin>
-
-            <plugin>
-                <groupId>org.sonatype.ossindex.maven</groupId>
-                <artifactId>ossindex-maven-plugin</artifactId>
-                <version>3.1.0</version>
-            </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -205,18 +194,6 @@
                     <source>17</source>
                     <target>17</target>
                 </configuration>
-            </plugin>
-            <plugin>
-            <groupId>com.github.spotbugs</groupId>
-            <artifactId>spotbugs-maven-plugin</artifactId>
-            <version>4.8.3.0</version>
-            <executions>
-                <execution>
-                <goals>
-                    <goal>check</goal>
-                </goals>
-                </execution>
-            </executions>
             </plugin>
             <plugin>
                 <groupId>org.owasp</groupId>

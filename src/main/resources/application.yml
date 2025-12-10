@@ -3,16 +3,18 @@ spring:
     name: tasks
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/sonar
-    username: sonar
-    password: sonar
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
 
   jpa:
     hibernate:
       ddl-auto: create-drop
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
+
 server:
   port: 5300
