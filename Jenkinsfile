@@ -108,7 +108,6 @@ pipeline {
             }
         }
 
-        // OWASP Dependency Check retiré du pom.xml, donc pas de stage dédié ici
 
         stage('🏗️ Build') {
             steps {
