@@ -75,6 +75,8 @@ pipeline {
                     withSonarQubeEnv("${SONAR_SERVER}") {
                         sh '''
                         ./mvnw clean verify sonar:sonar \
+                            -Dsonar.host.url=http://sonarqube:9000 \
+                            -Dsonar.login=$SONAR_TOKEN \
                             -Dsonar.projectKey=task-rest-api \
                             -Dsonar.projectName=task-rest-api \
                             -Dsonar.projectVersion=0.0.1 \
