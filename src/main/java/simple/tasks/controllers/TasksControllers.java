@@ -1,6 +1,5 @@
 package simple.tasks.controllers;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.springframework.web.bind.annotation.*;
 import simple.tasks.dto.TasksDto;
 import simple.tasks.models.Tasks;
@@ -15,8 +14,6 @@ public class TasksControllers {
     private final TasksGetTaskById tasksGetTaskByIdService;
     private final TasksGetAllTasks tasksGetAllTasks;
     private final UpdateTask updateTasksService;
-
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Bean Spring injecté de manière sûre")
     private final DeleteTask deleteTasksService;
 
     public TasksControllers(
