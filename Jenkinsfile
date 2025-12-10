@@ -2,6 +2,7 @@ pipeline {
     agent {
         node {
             label 'jenkins-agent'
+            // Workspace sur l'agent Docker
             customWorkspace '/home/jenkins/agent'
         }
     }
@@ -34,7 +35,6 @@ pipeline {
 
         SNYK           = "snyk"
         TRIVY_URL      = "http://trivy:4954/scan"
-
     }
 
     stages {
@@ -57,166 +57,150 @@ pipeline {
             post {
                 always {
                     junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
-                    // publishHTML(...) désactivé : plugin HTML Publisher non installé
+                    // Pas de publishHTML: plugin HTML Publisher non installé
                 }
             }
         }
 
-        // stage('📊 SonarQube') {
-        //     steps {
-        //         echo '[Étape 1] Vérification DNS SonarQube'
-        //         sh '''
-        //             echo "[INFO] Test DNS SonarQube avec curl"
-        //             curl -v http://sonarqube:9000/api/system/status || echo "ECHEC"
-        //         '''
+        stage('📊 SonarQube') {
+            steps {
+                echo '[Étape 1] Vérification DNS SonarQube'
+                sh '''
+                    echo "[INFO] Test DNS SonarQube avec curl"
+                    curl -v http://sonarqube:9000/api/system/status || echo "ECHEC"
+                '''
 
-        //         echo '[Étape 2] Analyse SonarQube'
-        //         withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
-        //             withSonarQubeEnv("${SONAR_SERVER}") {
-        //                 sh '''
-        //                 ./mvnw clean verify sonar:sonar \
-        //                     -Dsonar.projectKey=task-rest-api \
-        //                     -Dsonar.projectName=task-rest-api \
-        //                     -Dsonar.projectVersion=0.0.1 \
-        //                     -Dsonar.sources=src/ \
-        //                     -Dsonar.java.binaries=target/classes \
-        //                     -Dsonar.junit.reportsPath=target/surefire-reports/ \
-        //                     -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-        //                     -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
-        //                     -Dsonar.exclusions=**/target/**,**/test/**,**/*.json,**/*.yml \
-        //                     -Dsonar.host.url=$SONAR_URL \
-        //                     -Dsonar.token=$SONAR_TOKEN
-        //                 '''
-        //             }
-        //         }
-        //     }
+                echo '[Étape 2] Analyse SonarQube'
+                withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
+                    withSonarQubeEnv("${SONAR_SERVER}") {
+                        sh '''
+                        ./mvnw clean verify sonar:sonar \
+                            -Dsonar.projectKey=task-rest-api \
+                            -Dsonar.projectName=task-rest-api \
+                            -Dsonar.projectVersion=0.0.1 \
+                            -Dsonar.sources=src/ \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                            -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
+                            -Dsonar.exclusions=**/target/**,**/test/**,**/*.json,**/*.yml \
+                            -Dsonar.host.url=$SONAR_URL \
+                            -Dsonar.token=$SONAR_TOKEN
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('✅ Quality Gate') {
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('🔐 Snyk Scan') {
+            steps {
+                withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
+                    sh '''
+                        snyk auth $SNYK_TOKEN
+                        snyk test --severity-threshold=high --file=pom.xml --json > snyk_report.json || true
+                        mkdir -p reports/snyk
+                        snyk-to-html -i snyk_report.json -o reports/snyk/snyk-report.html
+                    '''
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'reports/snyk/snyk-report.*', allowEmptyArchive: true
+                }
+            }
+        }
+
+        // OWASP Dependency Check retiré du pom.xml, donc pas de stage dédié ici
+
+        stage('🏗️ Build') {
+            steps {
+                sh './mvnw package -DskipTests'
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'target/*.jar'
+                }
+            }
+        }
+
+        stage('🐳 Docker Build') {
+            steps {
+                sh """
+                    docker build -t ${IMAGE_TAG} .
+                    docker tag ${IMAGE_TAG} ${IMAGE_FULL}
+                """
+            }
+        }
+
+        stage('🔬 Trivy') {
+            steps {
+                sh '''
+                    mkdir -p reports/trivy
+                    curl -s -X POST http://trivy:4954/scan \
+                        -H 'Content-Type: application/json' \
+                        -d "{
+                            \\\"image_name\\\": \\\"${IMAGE_TAG}\\\",\
+                            \\\"scan_type\\\": \\\"image\\\",\
+                            \\\"vuln_type\\\": [\\\"os\\\", \\\"library\\\"],\
+                            \\\"severity\\\": [\\\"CRITICAL\\\", \\\"HIGH\\\"]\
+                        }" > reports/trivy/trivy-report.json
+
+                    python3 scripts/generate_trivy_report.py reports/trivy/trivy-report.json reports/trivy/trivy-report.html
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'reports/trivy/*.*', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('📦 Push to Nexus') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${NEXUS_CREDENTIALS}",
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh '''
+                        echo "$PASS" | docker login http://nexus:8082 -u "$USER" --password-stdin
+                        docker tag ${IMAGE_TAG} ${IMAGE_FULL}
+                        docker push ${IMAGE_FULL}
+                        docker logout http://nexus:8082
+                    '''
+
+                }
+            }
+        }
+
+        stage('🧹 Cleanup') {
+            steps {
+                sh '''
+                    echo "[INFO] Suppression des images..."
+                    docker rmi ${IMAGE_TAG} || true
+                    docker rmi ${IMAGE_FULL} || true
+
+                    echo "[INFO] Suppression des conteneurs stoppés..."
+                    docker container prune -f || true
+
+                    echo "[INFO] Suppression des volumes inutilisés..."
+                    docker volume prune -f || true
+
+                    echo "[INFO] Nettoyage du système (réseaux, build cache, etc)..."
+                    docker system prune -af --volumes || true
+                '''
+            }
+        }
+
     }
-
-    //     stage('✅ Quality Gate') {
-    //         steps {
-    //             timeout(time: 10, unit: 'MINUTES') {
-    //                 waitForQualityGate abortPipeline: true
-    //             }
-    //         }
-    //     }
-
-    //     stage('🔐 Snyk Scan') {
-    //         steps {
-    //             withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
-    //                 sh '''
-    //                     snyk auth $SNYK_TOKEN
-    //                     snyk test --severity-threshold=high --file=pom.xml --json > snyk_report.json || true
-    //                     mkdir -p reports/snyk
-    //                     snyk-to-html -i snyk_report.json -o reports/snyk/snyk-report.html
-    //                 '''
-    //             }
-    //         }
-    //         post {
-    //             always {
-    //                 archiveArtifacts artifacts: 'reports/snyk/snyk-report.*', allowEmptyArchive: true
-    //                 // publishHTML(...) désactivé : plugin HTML Publisher non installé
-    //             }
-    //         }
-    //     }
-
-    //   stage('🛡️ OWASP Dependency Check') {
-    //         steps {
-    //             script {
-    //                 echo '[INFO] Lancement de l’analyse de vulnérabilités...'
-    //                 sh './mvnw org.owasp:dependency-check-maven:check'
-    //             }
-    //         }
-
-    //         post {
-    //             always {
-    //                 archiveArtifacts artifacts: '**/dependency-check-report.html', allowEmptyArchive: true
-    //                 // publishHTML(...) désactivé : plugin HTML Publisher non installé
-    //             }
-    //         }
-    //     }
-
-
-    //     stage('🏗️ Build') {
-    //         steps {
-    //             sh './mvnw package -DskipTests'
-    //         }
-    //         post {
-    //             success {
-    //                 archiveArtifacts artifacts: 'target/*.jar'
-    //             }
-    //         }
-    //     }
-
-    //     stage('🐳 Docker Build') {
-    //         steps {
-    //             sh """
-    //                 docker build -t ${IMAGE_TAG} .
-    //                 docker tag ${IMAGE_TAG} ${IMAGE_FULL}
-    //             """
-    //         }
-    //     }
-
-    //     stage('🔬 Trivy') {
-    //         steps {
-    //             sh '''
-    //                 mkdir -p reports/trivy
-    //                 curl -s -X POST http://trivy:4954/scan \
-    //                     -H 'Content-Type: application/json' \
-    //                     -d "{
-    //                         \\"image_name\\": \\"${IMAGE_TAG}\\",
-    //                         \\"scan_type\\": \\"image\\",
-    //                         \\"vuln_type\\": [\\"os\\", \\"library\\"],
-    //                         \\"severity\\": [\\"CRITICAL\\", \\"HIGH\\"]
-    //                     }" > reports/trivy/trivy-report.json
-
-    //                 python3 scripts/generate_trivy_report.py reports/trivy/trivy-report.json reports/trivy/trivy-report.html
-    //             '''
-    //         }
-    //         post {
-    //             always {
-    //                 archiveArtifacts artifacts: 'reports/trivy/*.*'
-    //                 // publishHTML(...) désactivé : plugin HTML Publisher non installé
-    //             }
-    //         }
-    //     }
-
-    //     stage('📦 Push to Nexus') {
-    //         steps {
-    //             withCredentials([usernamePassword(
-    //                 credentialsId: "${NEXUS_CREDENTIALS}",
-    //                 usernameVariable: 'USER',
-    //                 passwordVariable: 'PASS'
-    //             )]) {
-    //                 sh '''
-    //                     echo "$PASS" | docker login http://nexus:8082 -u "$USER" --password-stdin
-    //                     docker tag ${IMAGE_TAG} ${IMAGE_FULL}
-    //                     docker push ${IMAGE_FULL}
-    //                     docker logout http://nexus:8082
-    //                 '''
-
-    //             }
-    //         }
-    //     }
-
-    //     stage('🧹 Cleanup') {
-    //         steps {
-    //             sh '''
-    //                 echo "[INFO] Suppression des images..."
-    //                 docker rmi ${IMAGE_TAG} || true
-    //                 docker rmi ${IMAGE_FULL} || true
-
-    //                 echo "[INFO] Suppression des conteneurs stoppés..."
-    //                 docker container prune -f || true
-
-    //                 echo "[INFO] Suppression des volumes inutilisés..."
-    //                 docker volume prune -f || true
-
-    //                 echo "[INFO] Nettoyage du système (réseaux, build cache, etc)..."
-    //                 docker system prune -af --volumes || true
-    //             '''
-    //         }
-    //     }
-
 
     post {
         failure {
@@ -226,6 +210,4 @@ pipeline {
             archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
         }
     }
-
-
 }
