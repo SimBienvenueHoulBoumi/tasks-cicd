@@ -13,12 +13,6 @@ pipeline {
         timestamps()
     }
 
-    tools {
-        jdk 'jdk'
-        maven 'maven'
-        git 'git'
-    }
-
     environment {
         APP_NAME         = "tasks-cicd"
         DOCKER_HOST      = "tcp://dind:2375"
@@ -203,8 +197,10 @@ pipeline {
         failure {
             echo "[Pipeline] ❌ Build échoué — pensez à consulter les logs et rapports."
         }
-        always {
-            archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
-        }
+        // always {
+        //     // Désactivé pour éviter les erreurs de contexte (hudson.FilePath manquant)
+        //     // Si besoin, déplacer l'archiveArtifacts dans un stage avec un agent/node explicite.
+        //     archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
+        // }
     }
 }
