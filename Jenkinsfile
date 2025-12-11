@@ -44,17 +44,17 @@ pipeline {
             }
         }
 
-        // stage('🧪 Tests') {
-        //     steps {
-        //         sh './mvnw verify'
-        //     }
-        //     post {
-        //         always {
-        //             junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
-        //             // Pas de publishHTML: plugin HTML Publisher non installé
-        //         }
-        //     }
-        // }
+        stage('🧪 Tests') {
+            steps {
+                sh './mvnw verify'
+            }
+            post {
+                always {
+                    junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
+                    // Pas de publishHTML: plugin HTML Publisher non installé
+                }
+            }
+        }
 
         // stage('📊 SonarQube') {
         //     steps {
