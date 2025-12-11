@@ -84,6 +84,26 @@ pipeline {
             }
         }
 
+        stage('🏗️ Build') {
+            steps {
+                sh './mvnw package -DskipTests'
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'target/*.jar'
+                }
+            }
+        }
+
+        stage('🐳 Docker Build') {
+            steps {
+                sh """
+                    docker build -t ${IMAGE_TAG} .
+                    docker tag ${IMAGE_TAG} ${IMAGE_FULL}
+                """
+            }
+        }
+
         stage('🔐 Snyk Scan') {
             steps {
                 withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
@@ -110,26 +130,6 @@ pipeline {
             }
         }
 
-
-        // stage('🏗️ Build') {
-        //     steps {
-        //         sh './mvnw package -DskipTests'
-        //     }
-        //     post {
-        //         success {
-        //             archiveArtifacts artifacts: 'target/*.jar'
-        //         }
-        //     }
-        // }
-
-        // stage('🐳 Docker Build') {
-        //     steps {
-        //         sh """
-        //             docker build -t ${IMAGE_TAG} .
-        //             docker tag ${IMAGE_TAG} ${IMAGE_FULL}
-        //         """
-        //     }
-        // }
 
         // stage('🔬 Trivy') {
         //     steps {
