@@ -11,6 +11,9 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 30, unit: 'MINUTES')
         timestamps()
+        // On désactive le checkout SCM automatique de Jenkins
+        // pour n'utiliser que le stage 📥 Checkout ci‑dessous
+        skipDefaultCheckout(true)
     }
 
     environment {
