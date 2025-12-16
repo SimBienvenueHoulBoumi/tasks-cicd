@@ -80,16 +80,16 @@ pipeline {
             }
         }
 
-        // stage('🏗️ Build') {
-        //     steps {
-        //         sh './mvnw package -DskipTests'
-        //     }
-        //     post {
-        //         success {
-        //             archiveArtifacts artifacts: 'target/*.jar'
-        //         }
-        //     }
-        // }
+        stage('🏗️ Build') {
+            steps {
+                sh './mvnw package -DskipTests'
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'target/*.jar'
+                }
+            }
+        }
 
         // stage('🐳 Docker Build') {
         //     steps {
