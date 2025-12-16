@@ -106,8 +106,8 @@ pipeline {
                     sh '''
                         mkdir -p reports/snyk
 
-                        # Lancement de Snyk via l'image Docker officielle
-                        docker run --rm \
+                        # Lancement de Snyk via l'image Docker officielle (forcé en linux/amd64 pour compatibilité)
+                        docker run --rm --platform linux/amd64 \
                           -e SNYK_TOKEN=$SNYK_TOKEN \
                           -v "$(pwd)":/project \
                           -w /project \
