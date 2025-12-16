@@ -100,31 +100,31 @@ pipeline {
             }
         }
 
-        // stage('🔐 Snyk Scan') {
-        //     steps {
-        //         withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
-        //             sh '''
-        //                 mkdir -p reports/snyk
+        stage('🔐 Snyk Scan') {
+            steps {
+                withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
+                    sh '''
+                        mkdir -p reports/snyk
 
-        //                 # Lancement de Snyk via l'image Docker officielle
-        //                 docker run --rm \
-        //                   -e SNYK_TOKEN=$SNYK_TOKEN \
-        //                   -v "$(pwd)":/project \
-        //                   -w /project \
-        //                   snyk/snyk:docker \
-        //                   snyk test --severity-threshold=high --file=pom.xml --json > reports/snyk/snyk-report.json || true
+                        # Lancement de Snyk via l'image Docker officielle
+                        docker run --rm \
+                          -e SNYK_TOKEN=$SNYK_TOKEN \
+                          -v "$(pwd)":/project \
+                          -w /project \
+                          snyk/snyk:docker \
+                          snyk test --severity-threshold=high --file=pom.xml --json > reports/snyk/snyk-report.json || true
 
-        //                 # Si tu as l'outil snyk-to-html dans ton image, tu peux générer un rapport HTML.
-        //                 # Pour l'instant on archive surtout le JSON.
-        //             '''
-        //         }
-        //     }
-        //     post {
-        //         always {
-        //             archiveArtifacts artifacts: 'reports/snyk/snyk-report.*', allowEmptyArchive: true
-        //         }
-        //     }
-        // }
+                        # Si tu as l'outil snyk-to-html dans ton image, tu peux générer un rapport HTML.
+                        # Pour l'instant on archive surtout le JSON.
+                    '''
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'reports/snyk/snyk-report.*', allowEmptyArchive: true
+                }
+            }
+        }
 
 
         // stage('🔬 Trivy') {
