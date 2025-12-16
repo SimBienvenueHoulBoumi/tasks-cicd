@@ -1,19 +1,10 @@
 pipeline {
-    agent {
-        node {
-            label 'jenkins-agent'
-            // Workspace sur l'agent Docker
-            customWorkspace '/home/jenkins/agent'
-        }
-    }
-
     options {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 30, unit: 'MINUTES')
         timestamps()
         // On désactive le checkout SCM automatique de Jenkins
         // pour n'utiliser que le stage 📥 Checkout ci‑dessous
-        skipDefaultCheckout(true)
     }
 
     environment {
@@ -36,16 +27,9 @@ pipeline {
     stages {
         stage('📥 Checkout') {
             steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[
-                        url: 'git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git',
-                        credentialsId: 'JENKINS_AGENT'
-                    ]]
-                ])
+                checkout scm
             }
         }
-
         stage('🧪 Tests') {
             steps {
                 sh './mvnw verify'
