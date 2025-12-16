@@ -134,65 +134,65 @@ pipeline {
         }
 
 
-        // stage('🔬 Trivy') {
-        //     steps {
-        //         sh '''
-        //             mkdir -p reports/trivy
-        //             curl -s -X POST http://trivy:4954/scan \
-        //                 -H 'Content-Type: application/json' \
-        //                 -d "{
-        //                     \\\"image_name\\\": \\\"${IMAGE_TAG}\\\",\
-        //                     \\\"scan_type\\\": \\\"image\\\",\
-        //                     \\\"vuln_type\\\": [\\\"os\\\", \\\"library\\\"],\
-        //                     \\\"severity\\\": [\\\"CRITICAL\\\", \\\"HIGH\\\"]\
-        //                 }" > reports/trivy/trivy-report.json
+        stage('🔬 Trivy') {
+            steps {
+                sh '''
+                    mkdir -p reports/trivy
+                    curl -s -X POST http://trivy:4954/scan \
+                        -H 'Content-Type: application/json' \
+                        -d "{
+                            \\\"image_name\\\": \\\"${IMAGE_TAG}\\\",\
+                            \\\"scan_type\\\": \\\"image\\\",\
+                            \\\"vuln_type\\\": [\\\"os\\\", \\\"library\\\"],\
+                            \\\"severity\\\": [\\\"CRITICAL\\\", \\\"HIGH\\\"]\
+                        }" > reports/trivy/trivy-report.json
 
-        //             python3 scripts/generate_trivy_report.py reports/trivy/trivy-report.json reports/trivy/trivy-report.html
-        //         '''
-        //     }
-        //     post {
-        //         always {
-        //             archiveArtifacts artifacts: 'reports/trivy/*.*', allowEmptyArchive: true
-        //         }
-        //     }
-        // }
+                    python3 scripts/generate_trivy_report.py reports/trivy/trivy-report.json reports/trivy/trivy-report.html
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'reports/trivy/*.*', allowEmptyArchive: true
+                }
+            }
+        }
 
-        // stage('📦 Push to Nexus') {
-        //     steps {
-        //         withCredentials([usernamePassword(
-        //             credentialsId: "${NEXUS_CREDENTIALS}",
-        //             usernameVariable: 'USER',
-        //             passwordVariable: 'PASS'
-        //         )]) {
-        //             sh '''
-        //                 echo "$PASS" | docker login http://nexus:8082 -u "$USER" --password-stdin
-        //                 docker tag ${IMAGE_TAG} ${IMAGE_FULL}
-        //                 docker push ${IMAGE_FULL}
-        //                 docker logout http://nexus:8082
-        //             '''
+        stage('📦 Push to Nexus') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${NEXUS_CREDENTIALS}",
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh '''
+                        echo "$PASS" | docker login http://nexus:8082 -u "$USER" --password-stdin
+                        docker tag ${IMAGE_TAG} ${IMAGE_FULL}
+                        docker push ${IMAGE_FULL}
+                        docker logout http://nexus:8082
+                    '''
 
-        //         }
-        //     }
-        // }
+                }
+            }
+        }
 
-        // stage('🧹 Cleanup') {
-        //     steps {
-        //         sh '''
-        //             echo "[INFO] Suppression des images..."
-        //             docker rmi ${IMAGE_TAG} || true
-        //             docker rmi ${IMAGE_FULL} || true
+        stage('🧹 Cleanup') {
+            steps {
+                sh '''
+                    echo "[INFO] Suppression des images..."
+                    docker rmi ${IMAGE_TAG} || true
+                    docker rmi ${IMAGE_FULL} || true
 
-        //             echo "[INFO] Suppression des conteneurs stoppés..."
-        //             docker container prune -f || true
+                    echo "[INFO] Suppression des conteneurs stoppés..."
+                    docker container prune -f || true
 
-        //             echo "[INFO] Suppression des volumes inutilisés..."
-        //             docker volume prune -f || true
+                    echo "[INFO] Suppression des volumes inutilisés..."
+                    docker volume prune -f || true
 
-        //             echo "[INFO] Nettoyage du système (réseaux, build cache, etc)..."
-        //             docker system prune -af --volumes || true
-        //         '''
-        //     }
-        // }
+                    echo "[INFO] Nettoyage du système (réseaux, build cache, etc)..."
+                    docker system prune -af --volumes || true
+                '''
+            }
+        }
 
     }
 
@@ -200,10 +200,10 @@ pipeline {
         failure {
             echo "[Pipeline] ❌ Build échoué — pensez à consulter les logs et rapports."
         }
-        // always {
-        //     // Désactivé pour éviter les erreurs de contexte (hudson.FilePath manquant)
-        //     // Si besoin, déplacer l'archiveArtifacts dans un stage avec un agent/node explicite.
-        //     archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
-        // }
+        always {
+            // Désactivé pour éviter les erreurs de contexte (hudson.FilePath manquant)
+            // Si besoin, déplacer l'archiveArtifacts dans un stage avec un agent/node explicite.
+            archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
+        }
     }
 }
