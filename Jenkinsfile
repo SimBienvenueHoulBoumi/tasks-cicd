@@ -33,16 +33,11 @@ pipeline {
     stages {
         stage('📥 Checkout') {
             steps {
-                sshagent(credentials: ['JENKINS_AGENT']) {
-                    sh '''
-                        echo "[INFO] Nettoyage du workspace..."
-                        rm -rf .git
-                        rm -rf *
-
-                        echo "[INFO] Clonage du dépôt..."
-                        git clone git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git .
-                    '''
-                }
+                // Nettoyage du workspace puis clonage via le step Git intégré
+                deleteDir()
+                git branch: 'main',
+                    url: 'git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git',
+                    credentialsId: 'JENKINS_AGENT'
             }
         }
         stage('🧪 Tests') {
