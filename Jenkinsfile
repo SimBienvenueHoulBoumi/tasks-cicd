@@ -33,13 +33,16 @@ pipeline {
     stages {
         stage('📥 Checkout') {
             steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[
-                        url: 'git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git',
-                        credentialsId: 'JENKINS_AGENT'
-                    ]]
-                ])
+                sshagent(credentials: ['JENKINS_AGENT']) {
+                    sh '''
+                        echo "[INFO] Nettoyage du workspace..."
+                        rm -rf .git
+                        rm -rf *
+
+                        echo "[INFO] Clonage du dépôt..."
+                        git clone git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git .
+                    '''
+                }
             }
         }
         stage('🧪 Tests') {
