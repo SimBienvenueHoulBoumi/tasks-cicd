@@ -18,7 +18,6 @@ pipeline {
 
     environment {
         APP_NAME         = "tasks-cicd"
-        DOCKER_HOST      = "tcp://dind:2375"
         IMAGE_TAG        = "${APP_NAME}:${BUILD_NUMBER}"
         PROJECT_NAME     = "task-rest-api"
         PROJECT_VERSION  = "0.0.1"
