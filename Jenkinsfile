@@ -91,14 +91,14 @@ pipeline {
             }
         }
 
-        // stage('🐳 Docker Build') {
-        //     steps {
-        //         sh """
-        //             docker build -t ${IMAGE_TAG} .
-        //             docker tag ${IMAGE_TAG} ${IMAGE_FULL}
-        //         """
-        //     }
-        // }
+        stage('🐳 Docker Build') {
+            steps {
+                sh """
+                    docker build -t ${IMAGE_TAG} .
+                    docker tag ${IMAGE_TAG} ${IMAGE_FULL}
+                """
+            }
+        }
 
         // stage('🔐 Snyk Scan') {
         //     steps {
