@@ -9,6 +9,8 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timeout(time: 30, unit: 'MINUTES')
         timestamps()
+        // On désactive le checkout SCM automatique
+        skipDefaultCheckout(true)
     }
 
     environment {
@@ -31,7 +33,13 @@ pipeline {
     stages {
         stage('📥 Checkout') {
             steps {
-                checkout scm
+                checkout([$class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        url: 'git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git',
+                        credentialsId: 'JENKINS_AGENT'
+                    ]]
+                ])
             }
         }
         stage('🧪 Tests') {
