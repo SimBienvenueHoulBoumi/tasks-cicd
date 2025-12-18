@@ -19,8 +19,8 @@ pipeline {
         PROJECT_NAME     = "task-rest-api"
         PROJECT_VERSION  = "0.0.1"
 
-        NEXUS_URL        = "http://nexus:8082"
-        IMAGE_FULL       = "simdev/${PROJECT_NAME}:${BUILD_NUMBER}"
+        NEXUS_URL        = "http://localhost:8082"
+        IMAGE_FULL       = "localhost:8082/simdev/${PROJECT_NAME}:${BUILD_NUMBER}"
         NEXUS_CREDENTIALS = "NEXUS_CREDENTIALS"
 
         SONAR_SERVER   = "SonarQube"
@@ -153,10 +153,10 @@ pipeline {
                     passwordVariable: 'PASS'
                 )]) {
                     sh '''
-                        echo "$PASS" | docker login http://nexus:8082 -u "$USER" --password-stdin
+                        echo "$PASS" | docker login ${NEXUS_URL} -u "$USER" --password-stdin
                         docker tag ${IMAGE_TAG} ${IMAGE_FULL}
                         docker push ${IMAGE_FULL}
-                        docker logout http://nexus:8082
+                        docker logout ${NEXUS_URL}
                     '''
 
                 }
