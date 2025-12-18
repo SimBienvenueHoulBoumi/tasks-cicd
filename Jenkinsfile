@@ -169,24 +169,24 @@ pipeline {
             }
         }
 
-        // stage('🧹 Cleanup') {
-        //     steps {
-        //         sh '''
-        //             echo "[INFO] Suppression des images..."
-        //             docker rmi ${IMAGE_TAG} || true
-        //             docker rmi ${IMAGE_FULL} || true
+        stage('🧹 Cleanup') {
+            steps {
+                sh '''
+                    echo "[INFO] Suppression des images..."
+                    docker rmi ${IMAGE_TAG} || true
+                    docker rmi ${IMAGE_FULL} || true
 
-        //             echo "[INFO] Suppression des conteneurs stoppés..."
-        //             docker container prune -f || true
+                    echo "[INFO] Suppression des conteneurs stoppés..."
+                    docker container prune -f || true
 
-        //             echo "[INFO] Suppression des volumes inutilisés..."
-        //             docker volume prune -f || true
+                    echo "[INFO] Suppression des volumes inutilisés..."
+                    docker volume prune -f || true
 
-        //             echo "[INFO] Nettoyage du système (réseaux, build cache, etc)..."
-        //             docker system prune -af --volumes || true
-        //         '''
-        //     }
-        // }
+                    echo "[INFO] Nettoyage du système (réseaux, build cache, etc)..."
+                    docker system prune -af --volumes || true
+                '''
+            }
+        }
 
     }
 
