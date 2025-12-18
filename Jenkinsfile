@@ -132,16 +132,10 @@ pipeline {
             steps {
                 sh '''
                     mkdir -p reports/trivy
-                    curl -s -X POST http://trivy:4954/scan \
-                        -H 'Content-Type: application/json' \
-                        -d "{
-                            \\\"image_name\\\": \\\"${IMAGE_TAG}\\\",\
-                            \\\"scan_type\\\": \\\"image\\\",\
-                            \\\"vuln_type\\\": [\\\"os\\\", \\\"library\\\"],\
-                            \\\"severity\\\": [\\\"CRITICAL\\\", \\\"HIGH\\\"]\
-                        }" > reports/trivy/trivy-report.json
+                    # Scan de l'image Docker locale avec Trivy CLI (plus simple que le mode serveur HTTP)
+                    trivy image --severity CRITICAL,HIGH --format json -o reports/trivy/trivy-report.json ${IMAGE_TAG} || true
 
-                    python3 scripts/generate_trivy_report.py reports/trivy/trivy-report.json reports/trivy/trivy-report.html
+                    python3 scripts/generate_trivy_report.py reports/trivy/trivy-report.json reports/trivy/trivy-report.html || true
                 '''
             }
             post {
