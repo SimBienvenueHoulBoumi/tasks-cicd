@@ -110,6 +110,9 @@ pipeline {
                         export SNYK_TOKEN="$SNYK_TOKEN"
                         snyk test --severity-threshold=high --file=pom.xml --json > reports/snyk/snyk-report.json || true
 
+                        # Envoi d'un snapshot vers Snyk SaaS pour visualisation dans app.snyk.io
+                        snyk monitor --file=pom.xml --project-name=task-rest-api || true
+
                         # Génération d'un rapport HTML lisible avec un style inspiré de TailwindCSS
                         python3 scripts/generate_snyk_report.py || true
 
