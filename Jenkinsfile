@@ -19,8 +19,10 @@ pipeline {
         PROJECT_NAME     = "task-rest-api"
         PROJECT_VERSION  = "0.0.1"
 
-        NEXUS_URL        = "http://localhost:8082"
-        IMAGE_FULL       = "localhost:8082/simdev/${PROJECT_NAME}:${BUILD_NUMBER}"
+        // Nexus Docker registry (port 8083 exposé vers 8082 interne 8081 UI / 8082 HTTP repos)
+        NEXUS_HOST       = "localhost:8083"
+        NEXUS_URL        = "http://${NEXUS_HOST}"
+        IMAGE_FULL       = "${NEXUS_HOST}/simdev/${PROJECT_NAME}:${BUILD_NUMBER}"
         NEXUS_CREDENTIALS = "NEXUS_CREDENTIALS"
 
         SONAR_SERVER   = "SonarQube"
