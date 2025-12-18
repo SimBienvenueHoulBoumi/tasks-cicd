@@ -106,13 +106,12 @@ pipeline {
                     sh '''
                         mkdir -p reports/snyk
 
-                        # Lancement de Snyk via l'image Docker officielle (forcé en linux/amd64 pour compatibilité)
-                        docker run --rm --platform linux/amd64 \
-                          -e SNYK_TOKEN=$SNYK_TOKEN \
-                          -v "$(pwd)":/project \
-                          -w /project \
-                          snyk/snyk:docker \
-                          snyk test --severity-threshold=high --file=pom.xml --json > reports/snyk/snyk-report.json || true
+                        # Lancement de Snyk via le CLI installé dans l'agent (plus besoin de Docker in Docker)
+                        export SNYK_TOKEN="$SNYK_TOKEN"
+                        snyk test --severity-threshold=high --file=pom.xml --json > reports/snyk/snyk-report.json || true
+
+                        # Génération d'un rapport HTML lisible avec un style inspiré de TailwindCSS
+                        python3 scripts/generate_snyk_report.py || true
 
                         # Si tu as l'outil snyk-to-html dans ton image, tu peux générer un rapport HTML.
                         # Pour l'instant on archive surtout le JSON.
