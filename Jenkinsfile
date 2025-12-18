@@ -151,23 +151,23 @@ pipeline {
             }
         }
 
-        // stage('📦 Push to Nexus') {
-        //     steps {
-        //         withCredentials([usernamePassword(
-        //             credentialsId: "${NEXUS_CREDENTIALS}",
-        //             usernameVariable: 'USER',
-        //             passwordVariable: 'PASS'
-        //         )]) {
-        //             sh '''
-        //                 echo "$PASS" | docker login http://nexus:8082 -u "$USER" --password-stdin
-        //                 docker tag ${IMAGE_TAG} ${IMAGE_FULL}
-        //                 docker push ${IMAGE_FULL}
-        //                 docker logout http://nexus:8082
-        //             '''
+        stage('📦 Push to Nexus') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${NEXUS_CREDENTIALS}",
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh '''
+                        echo "$PASS" | docker login http://nexus:8082 -u "$USER" --password-stdin
+                        docker tag ${IMAGE_TAG} ${IMAGE_FULL}
+                        docker push ${IMAGE_FULL}
+                        docker logout http://nexus:8082
+                    '''
 
-        //         }
-        //     }
-        // }
+                }
+            }
+        }
 
         // stage('🧹 Cleanup') {
         //     steps {
