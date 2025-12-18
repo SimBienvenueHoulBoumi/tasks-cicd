@@ -128,29 +128,28 @@ pipeline {
             }
         }
 
+        stage('🔬 Trivy') {
+            steps {
+                sh '''
+                    mkdir -p reports/trivy
+                    curl -s -X POST http://trivy:4954/scan \
+                        -H 'Content-Type: application/json' \
+                        -d "{
+                            \\\"image_name\\\": \\\"${IMAGE_TAG}\\\",\
+                            \\\"scan_type\\\": \\\"image\\\",\
+                            \\\"vuln_type\\\": [\\\"os\\\", \\\"library\\\"],\
+                            \\\"severity\\\": [\\\"CRITICAL\\\", \\\"HIGH\\\"]\
+                        }" > reports/trivy/trivy-report.json
 
-        // stage('🔬 Trivy') {
-        //     steps {
-        //         sh '''
-        //             mkdir -p reports/trivy
-        //             curl -s -X POST http://trivy:4954/scan \
-        //                 -H 'Content-Type: application/json' \
-        //                 -d "{
-        //                     \\\"image_name\\\": \\\"${IMAGE_TAG}\\\",\
-        //                     \\\"scan_type\\\": \\\"image\\\",\
-        //                     \\\"vuln_type\\\": [\\\"os\\\", \\\"library\\\"],\
-        //                     \\\"severity\\\": [\\\"CRITICAL\\\", \\\"HIGH\\\"]\
-        //                 }" > reports/trivy/trivy-report.json
-
-        //             python3 scripts/generate_trivy_report.py reports/trivy/trivy-report.json reports/trivy/trivy-report.html
-        //         '''
-        //     }
-        //     post {
-        //         always {
-        //             archiveArtifacts artifacts: 'reports/trivy/*.*', allowEmptyArchive: true
-        //         }
-        //     }
-        // }
+                    python3 scripts/generate_trivy_report.py reports/trivy/trivy-report.json reports/trivy/trivy-report.html
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'reports/trivy/*.*', allowEmptyArchive: true
+                }
+            }
+        }
 
         // stage('📦 Push to Nexus') {
         //     steps {
