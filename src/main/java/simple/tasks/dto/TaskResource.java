@@ -1,7 +1,10 @@
 package simple.tasks.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AccessLevel;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import simple.tasks.models.Tasks;
 
 import java.util.Map;
@@ -19,6 +22,8 @@ public class TaskResource {
     @Schema(description = "Nom de la tâche", example = "Faire les courses")
     private String name;
 
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
     @Schema(
         description = "Liens hypermedia relatifs à cette ressource",
         example = "{\"self\":\"/tasks/1\",\"tasks\":\"/tasks\"}"
@@ -32,6 +37,20 @@ public class TaskResource {
             "self", "/tasks/" + this.id,
             "tasks", "/tasks"
         );
+    }
+
+    /**
+     * Getter défensif pour éviter d'exposer la représentation interne de la Map.
+     */
+    public Map<String, String> get_links() {
+        return _links == null ? null : Map.copyOf(_links);
+    }
+
+    /**
+     * Setter défensif pour éviter de stocker une Map externe modifiable.
+     */
+    public void set_links(Map<String, String> links) {
+        this._links = links == null ? null : Map.copyOf(links);
     }
 }
 
