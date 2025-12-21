@@ -15,7 +15,6 @@ import simple.tasks.services.*;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Spring services are injected once and treated as immutable dependencies")
 @RestController
@@ -52,7 +51,7 @@ public class TasksControllers {
         return tasksGetAllTasks.getAllTasks()
             .stream()
             .map(TaskResource::new)
-            .collect(Collectors.toList());
+            .toList();
     }
 
     @GetMapping("/tasks/{id}")
