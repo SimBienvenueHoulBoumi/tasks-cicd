@@ -90,7 +90,7 @@ pipeline {
                         ./mvnw sonar:sonar \
                           -Dsonar.host.url="$SONAR_URL" \
                           -Dsonar.login="$SONAR_TOKEN" \
-                         -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                          -Dsonar.projectKey=$SONAR_PROJECT_KEY \
                           -Dsonar.projectName=$SONAR_PROJECT_NAME \
                           -Dsonar.projectVersion=$SONAR_PROJECT_VERSION \
                           -Dsonar.sources=$SONAR_SOURCES \
@@ -114,9 +114,6 @@ pipeline {
         }
 
         stage('🐳 Docker Build & Tag') {
-            environment {
-                DOCKER_BUILDKIT = '1'
-            }
             steps {
                 script {
                     // Récupérer le SHA court du commit
@@ -130,6 +127,7 @@ pipeline {
                     env.IMAGE_NAME_SHA    = "${IMAGE_REPO}:${commit}"
                     env.IMAGE_NAME_LATEST = "${IMAGE_REPO}:latest"
 
+                    // Build sans BuildKit (buildx non installé sur l'agent)
                     sh """
                         docker build \\
                           -t ${IMAGE_NAME_BUILD} \\
