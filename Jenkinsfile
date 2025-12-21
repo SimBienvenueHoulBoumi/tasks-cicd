@@ -14,46 +14,55 @@ pipeline {
     }
 
     environment {
-        APP_NAME         = "tasks-cicd"
-        IMAGE_TAG        = "${APP_NAME}:${BUILD_NUMBER}"
-        PROJECT_NAME     = "task-rest-api"
-        PROJECT_VERSION  = "0.0.1"
+        // --- App & Docker ---
+        APP_NAME        = "tasks-cicd"
+        PROJECT_NAME    = "task-rest-api"
+        PROJECT_VERSION = "0.0.1"
 
-        // Nexus Docker registry (port 8083 exposé vers 8082 interne 8081 UI / 8082 HTTP repos)
-        NEXUS_HOST       = "localhost:8083"
-        NEXUS_URL        = "http://${NEXUS_HOST}"
-        IMAGE_FULL       = "${NEXUS_HOST}/simdev/${PROJECT_NAME}:${BUILD_NUMBER}"
+        REGISTRY        = "localhost:8083"
+        IMAGE_REPO      = "${REGISTRY}/simdev/${PROJECT_NAME}"
+
+        // Tags de base (complétés par le SHA dans le stage Docker)
+        IMAGE_TAG_BUILD = "${APP_NAME}:${BUILD_NUMBER}"
+
+        // Nexus
         NEXUS_CREDENTIALS = "NEXUS_CREDENTIALS"
 
-        // Argo CD
-        ARGOCD_SERVER    = "argocd.local"
-        ARGOCD_APP_NAME  = "tasks-app"
-
+        // SonarQube
         SONAR_SERVER   = "SonarQube"
         SONAR_URL      = "http://sonarqube:9000"
 
-        SNYK           = "snyk"
-        TRIVY_URL      = "http://trivy:4954/scan"
+        // Outils sécurité
+        SNYK_CLI       = "snyk"
+
+        // --- Feature flags de durcissement (ON/OFF) ---
+        FAIL_ON_SONAR_QGATE  = "true"   // si Quality Gate != OK -> échec build
+        FAIL_ON_SNYK_VULNS   = "true"   // si Snyk trouve des vulnérabilités -> échec (sinon warning)
+        FAIL_ON_TRIVY_VULNS  = "true"   // idem pour Trivy
+        RUN_SMOKE_TESTS      = "false"  // activer un stage de smoke tests HTTP (si déploiement derrière)
     }
 
     stages {
+
         stage('📥 Checkout') {
             steps {
-                // Nettoyage du workspace puis clonage via le step Git intégré
                 deleteDir()
                 git branch: 'main',
                     url: 'git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git',
                     credentialsId: 'JENKINS_AGENT'
             }
         }
-        stage('🧪 Tests') {
+
+        stage('🧪 Tests & Build') {
             steps {
-                sh './mvnw verify'
+                sh './mvnw clean verify -DskipITs'
             }
             post {
                 always {
                     junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
-                    // Pas de publishHTML: plugin HTML Publisher non installé
+                }
+                success {
+                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
                 }
             }
         }
@@ -63,46 +72,82 @@ pipeline {
                 echo '[Étape 1] Vérification DNS SonarQube'
                 sh '''
                     echo "[INFO] Test DNS SonarQube avec curl"
-                    curl -v http://sonarqube:9000/api/system/status || echo "ECHEC"
+                    curl -s -o /dev/null -w "%{http_code}\\n" "$SONAR_URL/api/system/status" || echo "ECHEC"
                 '''
 
                 echo '[Étape 2] Analyse SonarQube'
                 withCredentials([string(credentialsId: 'SONARTOKEN', variable: 'SONAR_TOKEN')]) {
                     sh '''
-                        ./mvnw clean verify sonar:sonar \
-                            -Dsonar.host.url=$SONAR_URL \
-                            -Dsonar.login=$SONAR_TOKEN \
-                            -Dsonar.projectKey=task-rest-api \
-                            -Dsonar.projectName=task-rest-api \
-                            -Dsonar.projectVersion=0.0.1 \
-                            -Dsonar.sources=src/ \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                            -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
-                            -Dsonar.exclusions=**/target/**,**/test/**,**/*.json,**/*.yml
+                        ./mvnw sonar:sonar \
+                          -Dsonar.host.url="$SONAR_URL" \
+                          -Dsonar.login="$SONAR_TOKEN" \
+                          -Dsonar.projectKey=task-rest-api \
+                          -Dsonar.projectName=task-rest-api \
+                          -Dsonar.projectVersion=0.0.1 \
+                          -Dsonar.sources=src/ \
+                          -Dsonar.java.binaries=target/classes \
+                          -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                          -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
+                          -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
+                          -Dsonar.exclusions=**/target/**,**/test/**,**/*.json,**/*.yml \
+                          -DskipTests
                     '''
                 }
             }
         }
 
-        stage('🏗️ Build') {
-            steps {
-                sh './mvnw package -DskipTests'
+        stage('🚦 SonarQube Quality Gate') {
+            when {
+                expression { env.FAIL_ON_SONAR_QGATE == 'true' }
             }
-            post {
-                success {
-                    archiveArtifacts artifacts: 'target/*.jar'
+            steps {
+                script {
+                    // Nécessite le plugin "SonarQube Scanner for Jenkins"
+                    def qg = waitForQualityGate()
+                    echo "[SONAR] Quality Gate status: ${qg.status}"
+                    if (qg.status != 'OK') {
+                        error "Quality Gate échec : ${qg.status}"
+                    }
                 }
             }
         }
 
-        stage('🐳 Docker Build') {
+        stage('🏗️ Build (noop)') {
             steps {
-                sh """
-                    docker build -t ${IMAGE_TAG} .
-                    docker tag ${IMAGE_TAG} ${IMAGE_FULL}
-                """
+                echo "Le jar a déjà été construit pendant '🧪 Tests & Build'."
+                sh 'ls -1 target/*.jar || echo "Aucun jar trouvé !"'
+            }
+        }
+
+        stage('🐳 Docker Build & Tag') {
+            environment {
+                DOCKER_BUILDKIT = '1'
+            }
+            steps {
+                script {
+                    // Récupérer le SHA court du commit
+                    def commit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+
+                    env.IMAGE_TAG_BUILD  = "${APP_NAME}:${BUILD_NUMBER}"
+                    env.IMAGE_TAG_SHA    = "${APP_NAME}:${commit}"
+                    env.IMAGE_TAG_LATEST = "${APP_NAME}:latest"
+
+                    env.IMAGE_NAME_BUILD  = "${IMAGE_REPO}:${BUILD_NUMBER}"
+                    env.IMAGE_NAME_SHA    = "${IMAGE_REPO}:${commit}"
+                    env.IMAGE_NAME_LATEST = "${IMAGE_REPO}:latest"
+
+                    sh """
+                        docker build \\
+                          -t ${IMAGE_NAME_BUILD} \\
+                          -t ${IMAGE_NAME_SHA} \\
+                          .
+                    """
+
+                    // Tag latest uniquement sur main
+                    if ((env.BRANCH_NAME ?: 'main') == 'main') {
+                        sh "docker tag ${IMAGE_NAME_BUILD} ${IMAGE_NAME_LATEST}"
+                    }
+                }
             }
         }
 
@@ -110,20 +155,28 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
                     sh '''
+                        set +e
                         mkdir -p reports/snyk
 
-                        # Lancement de Snyk via le CLI installé dans l'agent (plus besoin de Docker in Docker)
                         export SNYK_TOKEN="$SNYK_TOKEN"
-                        snyk test --severity-threshold=high --file=pom.xml --json > reports/snyk/snyk-report.json || true
 
-                        # Envoi d'un snapshot vers Snyk SaaS pour visualisation dans app.snyk.io
-                        snyk monitor --file=pom.xml --project-name=task-rest-api || true
+                        echo "[SNYK] Lancement snyk test..."
+                        ${SNYK_CLI} test --severity-threshold=high --file=pom.xml --json > reports/snyk/snyk-report.json
+                        SNYK_EXIT=$?
 
-                        # Génération d'un rapport HTML lisible avec un style inspiré de TailwindCSS
+                        echo "[SNYK] Lancement snyk monitor..."
+                        ${SNYK_CLI} monitor --file=pom.xml --project-name=task-rest-api || true
+
+                        echo "[SNYK] Génération rapport HTML..."
                         python3 scripts/generate_snyk_report.py || true
 
-                        # Si tu as l'outil snyk-to-html dans ton image, tu peux générer un rapport HTML.
-                        # Pour l'instant on archive surtout le JSON.
+                        if [ "$FAIL_ON_SNYK_VULNS" = "true" ] && [ "$SNYK_EXIT" -ne 0 ]; then
+                          echo "[SNYK] Vulnérabilités détectées et FAIL_ON_SNYK_VULNS=true -> échec pipeline"
+                          exit "$SNYK_EXIT"
+                        else
+                          echo "[SNYK] Exit code = $SNYK_EXIT (FAIL_ON_SNYK_VULNS=$FAIL_ON_SNYK_VULNS)"
+                          exit 0
+                        fi
                     '''
                 }
             }
@@ -137,11 +190,23 @@ pipeline {
         stage('🔬 Trivy') {
             steps {
                 sh '''
+                    set +e
                     mkdir -p reports/trivy
-                    # Scan de l'image Docker locale avec Trivy CLI (plus simple que le mode serveur HTTP)
-                    trivy image --severity CRITICAL,HIGH --format json -o reports/trivy/trivy-report.json ${IMAGE_TAG} || true
+
+                    echo "[TRIVY] Scan de l'image ${IMAGE_NAME_BUILD} (CRITICAL,HIGH)..."
+                    trivy image --severity CRITICAL,HIGH --format json --exit-code 1 \
+                      -o reports/trivy/trivy-report.json ${IMAGE_NAME_BUILD}
+                    TRIVY_EXIT=$?
 
                     python3 scripts/generate_trivy_report.py reports/trivy/trivy-report.json reports/trivy/trivy-report.html || true
+
+                    if [ "$FAIL_ON_TRIVY_VULNS" = "true" ] && [ "$TRIVY_EXIT" -ne 0 ]; then
+                      echo "[TRIVY] Vulnérabilités détectées et FAIL_ON_TRIVY_VULNS=true -> échec pipeline"
+                      exit "$TRIVY_EXIT"
+                    else
+                      echo "[TRIVY] Exit code = $TRIVY_EXIT (FAIL_ON_TRIVY_VULNS=$FAIL_ON_TRIVY_VULNS)"
+                      exit 0
+                    fi
                 '''
             }
             post {
@@ -159,69 +224,70 @@ pipeline {
                     passwordVariable: 'PASS'
                 )]) {
                     sh '''
-                        echo "$PASS" | docker login ${NEXUS_URL} -u "$USER" --password-stdin
-                        docker tag ${IMAGE_TAG} ${IMAGE_FULL}
-                        docker push ${IMAGE_FULL}
-                        docker logout ${NEXUS_URL}
-                    '''
+                        echo "$PASS" | docker login ${REGISTRY} -u "$USER" --password-stdin
 
+                        docker push ${IMAGE_NAME_BUILD}
+                        docker push ${IMAGE_NAME_SHA}
+
+                        if [ "${BRANCH_NAME:-main}" = "main" ]; then
+                          docker push ${IMAGE_NAME_LATEST}
+                        fi
+
+                        docker logout ${REGISTRY}
+                    '''
                 }
             }
         }
 
-        // stage('🚀 GitOps: maj manifest ArgoCD') {
-        //     steps {
-        //         withCredentials([usernamePassword(
-        //             credentialsId: 'GITOPS_CREDENTIALS',
-        //             usernameVariable: 'GIT_USER',
-        //             passwordVariable: 'GIT_PASS'
-        //         )]) {
-        //             sh '''
-        //                 cd kubernetes/tasks  # adapte au chemin réel
-
-        //                 # Met à jour le tag d'image (exemple avec sed)
-        //                 sed -i.bak "s/^  tag: .*/  tag: \\"${BUILD_NUMBER}\\"/" values.yaml
-        //                 rm -f values.yaml.bak
-
-        //                 git config user.name "jenkins-bot"
-        //                 git config user.email "jenkins@example.local"
-        //                 git add values.yaml
-        //                 git commit -m "chore: bump image tag to ${BUILD_NUMBER}" || true
-        //                 git push https://${GIT_USER}:${GIT_PASS}@github.com/SimBienvenueHoulBoumi/tasks-cicd.git HEAD:main
-        //             '''
-        //         }
-        //     }
-        // }
-
-        stage('🧹 Cleanup') {
+        stage('🔍 Smoke tests (optionnel)') {
+            when {
+                expression { env.RUN_SMOKE_TESTS == 'true' }
+            }
             steps {
                 sh '''
-                    echo "[INFO] Suppression des images..."
-                    docker rmi ${IMAGE_TAG} || true
-                    docker rmi ${IMAGE_FULL} || true
+                    # Adapter l’URL à ton ingress / reverse proxy
+                    URL="https://tasks.local/actuator/health"
 
-                    echo "[INFO] Suppression des conteneurs stoppés..."
-                    docker container prune -f || true
-
-                    echo "[INFO] Suppression des volumes inutilisés..."
-                    docker volume prune -f || true
-
-                    echo "[INFO] Nettoyage du système (réseaux, build cache, etc)..."
-                    docker system prune -af --volumes || true
+                    echo "[SMOKE] Vérification de ${URL}"
+                    for i in $(seq 1 10); do
+                      STATUS=$(curl -k -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+                      if [ "$STATUS" = "200" ]; then
+                        echo "[SMOKE] OK (${STATUS})"
+                        exit 0
+                      fi
+                      echo "[SMOKE] Tentative $i, status=${STATUS} (attente 5s)..."
+                      sleep 5
+                    done
+                    echo "[SMOKE] Échec: service non OK après 10 tentatives"
+                    exit 1
                 '''
             }
         }
 
+        stage('🧹 Cleanup') {
+            steps {
+                sh '''
+                    echo "[CLEANUP] Suppression des images locales construites..."
+                    docker rmi ${IMAGE_NAME_BUILD} || true
+                    docker rmi ${IMAGE_NAME_SHA} || true
+                    if [ "${BRANCH_NAME:-main}" = "main" ]; then
+                      docker rmi ${IMAGE_NAME_LATEST} || true
+                    fi
+
+                    # Pas de docker system prune ici: trop agressif sur un agent partagé.
+                    # Si tu veux vraiment l'activer, fais-le manuellement ou ajoute un flag dédié.
+                '''
+            }
+        }
     }
 
     post {
         failure {
-            echo "[Pipeline] ❌ Build échoué — pensez à consulter les logs et rapports."
+            echo "[Pipeline] ❌ Build échoué — consulte les logs et rapports (JUnit, Sonar, Snyk, Trivy)."
         }
         always {
-            // Désactivé pour éviter les erreurs de contexte (hudson.FilePath manquant)
-            // Si besoin, déplacer l'archiveArtifacts dans un stage avec un agent/node explicite.
-            archiveArtifacts artifacts: '**/*.log', allowEmptyArchive: true
+            // Archivage ciblé : jar et rapports
+            archiveArtifacts artifacts: 'target/*.jar, reports/**', allowEmptyArchive: true
         }
     }
 }
