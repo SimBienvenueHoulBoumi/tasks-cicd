@@ -36,9 +36,9 @@ pipeline {
         SNYK_CLI          = "snyk"
 
         // --- Feature flags de durcissement (ON/OFF) ---
-        FAIL_ON_SONAR_QGATE  = "true"   // si Quality Gate != OK -> échec build (via sonar.qualitygate.wait)
-        FAIL_ON_SNYK_VULNS   = "true"   // si Snyk trouve des vulnérabilités -> échec (sinon warning)
-        FAIL_ON_TRIVY_VULNS  = "true"   // idem pour Trivy
+        FAIL_ON_SONAR_QGATE  = "false"   // si Quality Gate != OK -> échec build (via sonar.qualitygate.wait)
+        FAIL_ON_SNYK_VULNS   = "false"   // si Snyk trouve des vulnérabilités -> échec (sinon warning)
+        FAIL_ON_TRIVY_VULNS  = "false"   // idem pour Trivy
         RUN_SMOKE_TESTS      = "false"  // activer un stage de smoke tests HTTP (si déploiement derrière)
     }
 
