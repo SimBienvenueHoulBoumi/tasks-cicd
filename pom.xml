@@ -35,11 +35,20 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+
         <!-- Base de données H2 (runtime / tests) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+
+        <!-- OpenAPI / Swagger UI avec springdoc pour Spring Boot 3 -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.6.0</version>
         </dependency>
 
         <!-- Tests Spring Boot -->

@@ -1,16 +1,25 @@
 package simple.tasks.controllers;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
+import simple.tasks.dto.TaskResource;
 import simple.tasks.dto.TasksDto;
 import simple.tasks.models.Tasks;
 import simple.tasks.services.*;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "Spring services are injected once and treated as immutable dependencies")
 @RestController
+@Tag(name = "Tasks", description = "API de gestion des tâches")
 public class TasksControllers {
     private final TasksCreateTask createTasksService;
     private final TasksGetTaskById tasksGetTaskByIdService;
@@ -33,26 +42,67 @@ public class TasksControllers {
     }
 
     @GetMapping("/tasks")
-    public List<Tasks> getAllTasks() {
-        return tasksGetAllTasks.getAllTasks();
+    @Operation(summary = "Lister toutes les tâches", description = "Retourne la liste des tâches existantes avec des liens hypermedia")
+    @ApiResponse(
+        responseCode = "200",
+        description = "Liste de tâches retournée",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = TaskResource.class))
+    )
+    public List<TaskResource> getAllTasks() {
+        return tasksGetAllTasks.getAllTasks()
+            .stream()
+            .map(TaskResource::new)
+            .collect(Collectors.toList());
     }
 
     @GetMapping("/tasks/{id}")
-    public Tasks getTaskById(@PathVariable Long id) {
-        return tasksGetTaskByIdService.getTaskById(id);
+    @Operation(summary = "Récupérer une tâche par id")
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Tâche trouvée",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TaskResource.class))
+        ),
+        @ApiResponse(responseCode = "404", description = "Tâche non trouvée")
+    })
+    public TaskResource getTaskById(@PathVariable Long id) {
+        Tasks task = tasksGetTaskByIdService.getTaskById(id);
+        return new TaskResource(task);
     }
 
     @PostMapping("/tasks")
-    public Tasks createTask(@RequestBody TasksDto task) {
-        return createTasksService.createTask(task);
+    @Operation(summary = "Créer une nouvelle tâche")
+    @ApiResponse(
+        responseCode = "201",
+        description = "Tâche créée",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = TaskResource.class))
+    )
+    public TaskResource createTask(@RequestBody TasksDto task) {
+        Tasks created = createTasksService.createTask(task);
+        return new TaskResource(created);
     }
 
     @PutMapping("/tasks/{id}")
-    public Tasks updateTask(@PathVariable Long id, @RequestBody TasksDto task) {
-        return updateTasksService.updateTask(id, task);
+    @Operation(summary = "Mettre à jour une tâche existante")
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Tâche mise à jour",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TaskResource.class))
+        ),
+        @ApiResponse(responseCode = "404", description = "Tâche non trouvée")
+    })
+    public TaskResource updateTask(@PathVariable Long id, @RequestBody TasksDto task) {
+        Tasks updated = updateTasksService.updateTask(id, task);
+        return new TaskResource(updated);
     }
 
     @DeleteMapping("/tasks/{id}")
+    @Operation(summary = "Supprimer une tâche")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Tâche supprimée"),
+        @ApiResponse(responseCode = "404", description = "Tâche non trouvée")
+    })
     public void deleteTask(@PathVariable Long id) {
         deleteTasksService.deleteTask(id);
     }

@@ -25,6 +25,10 @@ pipeline {
         IMAGE_FULL       = "${NEXUS_HOST}/simdev/${PROJECT_NAME}:${BUILD_NUMBER}"
         NEXUS_CREDENTIALS = "NEXUS_CREDENTIALS"
 
+        // Argo CD
+        ARGOCD_SERVER    = "argocd.local"
+        ARGOCD_APP_NAME  = "tasks-app"
+
         SONAR_SERVER   = "SonarQube"
         SONAR_URL      = "http://sonarqube:9000"
 
@@ -164,6 +168,30 @@ pipeline {
                 }
             }
         }
+
+        // stage('🚀 GitOps: maj manifest ArgoCD') {
+        //     steps {
+        //         withCredentials([usernamePassword(
+        //             credentialsId: 'GITOPS_CREDENTIALS',
+        //             usernameVariable: 'GIT_USER',
+        //             passwordVariable: 'GIT_PASS'
+        //         )]) {
+        //             sh '''
+        //                 cd kubernetes/tasks  # adapte au chemin réel
+
+        //                 # Met à jour le tag d'image (exemple avec sed)
+        //                 sed -i.bak "s/^  tag: .*/  tag: \\"${BUILD_NUMBER}\\"/" values.yaml
+        //                 rm -f values.yaml.bak
+
+        //                 git config user.name "jenkins-bot"
+        //                 git config user.email "jenkins@example.local"
+        //                 git add values.yaml
+        //                 git commit -m "chore: bump image tag to ${BUILD_NUMBER}" || true
+        //                 git push https://${GIT_USER}:${GIT_PASS}@github.com/SimBienvenueHoulBoumi/tasks-cicd.git HEAD:main
+        //             '''
+        //         }
+        //     }
+        // }
 
         stage('🧹 Cleanup') {
             steps {
