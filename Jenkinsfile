@@ -31,6 +31,15 @@ pipeline {
         // SonarQube
         SONAR_SERVER      = "SonarQube"
         SONAR_URL         = "http://sonarqube:9000"
+        SONAR_PROJECT_KEY = "task-rest-api"
+        SONAR_PROJECT_NAME = "task-rest-api"
+        SONAR_PROJECT_VERSION = "0.0.1"
+        SONAR_SOURCES = "src/"
+        SONAR_JAVA_BINARIES = "target/classes"
+        SONAR_JUNIT_REPORTS_PATH = "target/surefire-reports/"
+        SONAR_COVERAGE_JACOCO_XML_REPORT_PATHS = "target/jacoco/jacoco.xml"
+        SONAR_JAVA_CHECKSTYLE_REPORT_PATHS = "target/checkstyle-result.xml"
+        SONAR_EXCLUSIONS = "**/target/**,**/test/**,**/*.json,**/*.yml"
 
         // Outils sécurité
         SNYK_CLI          = "snyk"
@@ -81,15 +90,15 @@ pipeline {
                         ./mvnw sonar:sonar \
                           -Dsonar.host.url="$SONAR_URL" \
                           -Dsonar.login="$SONAR_TOKEN" \
-                          -Dsonar.projectKey=task-rest-api \
-                          -Dsonar.projectName=task-rest-api \
-                          -Dsonar.projectVersion=0.0.1 \
-                          -Dsonar.sources=src/ \
-                          -Dsonar.java.binaries=target/classes \
-                          -Dsonar.junit.reportsPath=target/surefire-reports/ \
-                          -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
-                          -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
-                          -Dsonar.exclusions=**/target/**,**/test/**,**/*.json,**/*.yml \
+                         -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                          -Dsonar.projectName=$SONAR_PROJECT_NAME \
+                          -Dsonar.projectVersion=$SONAR_PROJECT_VERSION \
+                          -Dsonar.sources=$SONAR_SOURCES \
+                          -Dsonar.java.binaries=$SONAR_JAVA_BINARIES \
+                          -Dsonar.junit.reportsPath=$SONAR_JUNIT_REPORTS_PATH \
+                          -Dsonar.coverage.jacoco.xmlReportPaths=$SONAR_COVERAGE_JACOCO_XML_REPORT_PATHS \
+                          -Dsonar.java.checkstyle.reportPaths=$SONAR_JAVA_CHECKSTYLE_REPORT_PATHS \
+                          -Dsonar.exclusions=$SONAR_EXCLUSIONS \
                           -Dsonar.qualitygate.wait=$FAIL_ON_SONAR_QGATE \
                           -DskipTests
                     '''
