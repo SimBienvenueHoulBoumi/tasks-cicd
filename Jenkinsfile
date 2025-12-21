@@ -29,14 +29,14 @@ pipeline {
         NEXUS_CREDENTIALS = "NEXUS_CREDENTIALS"
 
         // SonarQube
-        SONAR_SERVER   = "SonarQube"
-        SONAR_URL      = "http://sonarqube:9000"
+        SONAR_SERVER      = "SonarQube"
+        SONAR_URL         = "http://sonarqube:9000"
 
         // Outils sécurité
-        SNYK_CLI       = "snyk"
+        SNYK_CLI          = "snyk"
 
         // --- Feature flags de durcissement (ON/OFF) ---
-        FAIL_ON_SONAR_QGATE  = "true"   // si Quality Gate != OK -> échec build
+        FAIL_ON_SONAR_QGATE  = "true"   // si Quality Gate != OK -> échec build (via sonar.qualitygate.wait)
         FAIL_ON_SNYK_VULNS   = "true"   // si Snyk trouve des vulnérabilités -> échec (sinon warning)
         FAIL_ON_TRIVY_VULNS  = "true"   // idem pour Trivy
         RUN_SMOKE_TESTS      = "false"  // activer un stage de smoke tests HTTP (si déploiement derrière)
@@ -90,24 +90,9 @@ pipeline {
                           -Dsonar.coverage.jacoco.xmlReportPaths=target/jacoco/jacoco.xml \
                           -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml \
                           -Dsonar.exclusions=**/target/**,**/test/**,**/*.json,**/*.yml \
+                          -Dsonar.qualitygate.wait=$FAIL_ON_SONAR_QGATE \
                           -DskipTests
                     '''
-                }
-            }
-        }
-
-        stage('🚦 SonarQube Quality Gate') {
-            when {
-                expression { env.FAIL_ON_SONAR_QGATE == 'true' }
-            }
-            steps {
-                script {
-                    // Nécessite le plugin "SonarQube Scanner for Jenkins"
-                    def qg = waitForQualityGate()
-                    echo "[SONAR] Quality Gate status: ${qg.status}"
-                    if (qg.status != 'OK') {
-                        error "Quality Gate échec : ${qg.status}"
-                    }
                 }
             }
         }
@@ -236,31 +221,6 @@ pipeline {
                         docker logout ${REGISTRY}
                     '''
                 }
-            }
-        }
-
-        stage('🔍 Smoke tests (optionnel)') {
-            when {
-                expression { env.RUN_SMOKE_TESTS == 'true' }
-            }
-            steps {
-                sh '''
-                    # Adapter l’URL à ton ingress / reverse proxy
-                    URL="https://tasks.local/actuator/health"
-
-                    echo "[SMOKE] Vérification de ${URL}"
-                    for i in $(seq 1 10); do
-                      STATUS=$(curl -k -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
-                      if [ "$STATUS" = "200" ]; then
-                        echo "[SMOKE] OK (${STATUS})"
-                        exit 0
-                      fi
-                      echo "[SMOKE] Tentative $i, status=${STATUS} (attente 5s)..."
-                      sleep 5
-                    done
-                    echo "[SMOKE] Échec: service non OK après 10 tentatives"
-                    exit 1
-                '''
             }
         }
 
