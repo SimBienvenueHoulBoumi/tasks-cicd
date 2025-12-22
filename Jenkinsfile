@@ -24,7 +24,7 @@ pipeline {
         GIT_BRANCH      = "main"
         GIT_CRED_ID     = "JENKINS_AGENT"
 
-        NEXUS_REGISTRY          = "localhost:8083"
+        NEXUS_REGISTRY    = "localhost:8083"
         IMAGE_REPO        = "${NEXUS_REGISTRY}/simdev/${PROJECT_NAME}"
 
         // Tags d'image (les valeurs SHA sont recalculées dans le stage Docker)
@@ -52,6 +52,8 @@ pipeline {
         SNYK_CLI          = "snyk"
         // Identifiant ou slug de ton organisation Snyk (utilisé avec --org=)
         SNYK_ORG          = "967f8e17-af81-450e-98d1-e19b3e27f316"
+        // Nom du projet container dans Snyk pour ce repo
+        SNYK_PROJECT_NAME_CONTAINER = "task-rest-api-container"
 
         // --- Feature flags de durcissement (ON/OFF) ---
         FAIL_ON_SONAR_QGATE  = "false"   // si Quality Gate != OK -> échec build (via sonar.qualitygate.wait)
@@ -164,7 +166,7 @@ pipeline {
                         SNYK_EXIT=$?
 
                         echo "[SNYK] Lancement snyk container monitor..."
-                        ${SNYK_CLI} container monitor "${IMAGE_TO_SCAN}" --org="$SNYK_ORG" --project-name=task-rest-api || true
+                        ${SNYK_CLI} container monitor "${IMAGE_TO_SCAN}" --org="$SNYK_ORG" --project-name="$SNYK_PROJECT_NAME_CONTAINER" || true
 
                         echo "[SNYK] Génération rapport HTML..."
                         python3 scripts/generate_snyk_report.py || true
@@ -223,13 +225,13 @@ pipeline {
                     passwordVariable: 'PASS'
                 )]) {
                     sh '''
-                        echo "$PASS" | docker login ${REGISTRY} -u "$USER" --password-stdin
+                        echo "$PASS" | docker login ${NEXUS_REGISTRY} -u "$USER" --password-stdin
 
                         docker push ${IMAGE_NAME_BUILD}
                         docker push ${IMAGE_NAME_SHA}
                         docker push ${IMAGE_NAME_VERSION}
 
-                        docker logout ${REGISTRY}
+                        docker logout ${NEXUS_REGISTRY}
                     '''
                 }
             }
