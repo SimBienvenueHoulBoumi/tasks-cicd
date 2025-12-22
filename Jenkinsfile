@@ -19,11 +19,18 @@ pipeline {
         PROJECT_NAME    = "task-rest-api"
         PROJECT_VERSION = "0.0.1"
 
-        REGISTRY        = "localhost:8083"
-        IMAGE_REPO      = "${REGISTRY}/simdev/${PROJECT_NAME}"
+        // SCM
+        GIT_REPO_URL    = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
+        GIT_BRANCH      = "main"
+        GIT_CRED_ID     = "JENKINS_AGENT"
 
-        // Tags de base (complétés par le SHA dans le stage Docker)
-        IMAGE_TAG_BUILD = "${APP_NAME}:${BUILD_NUMBER}"
+        REGISTRY          = "localhost:8083"
+        IMAGE_REPO        = "${REGISTRY}/simdev/${PROJECT_NAME}"
+
+        // Tags d'image (les valeurs SHA sont recalculées dans le stage Docker)
+        IMAGE_TAG_BUILD   = "${APP_NAME}:${BUILD_NUMBER}"
+        IMAGE_TAG_SHA     = ""                               // défini avec le SHA dans le stage Docker
+        IMAGE_TAG_VERSION = "${APP_NAME}:${PROJECT_VERSION}" // tag immuable basé sur la version applicative
 
         // Nexus
         NEXUS_CREDENTIALS = "NEXUS_CREDENTIALS"
@@ -43,6 +50,7 @@ pipeline {
 
         // Outils sécurité
         SNYK_CLI          = "snyk"
+        SNYK_ORG          = "brhulla"   // slug de ton organisation Snyk (dashboard)
 
         // --- Feature flags de durcissement (ON/OFF) ---
         FAIL_ON_SONAR_QGATE  = "false"   // si Quality Gate != OK -> échec build (via sonar.qualitygate.wait)
@@ -56,9 +64,9 @@ pipeline {
         stage('📥 Checkout') {
             steps {
                 deleteDir()
-                git branch: 'main',
-                    url: 'git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git',
-                    credentialsId: 'JENKINS_AGENT'
+                git branch: "${GIT_BRANCH}",
+                    url: "${GIT_REPO_URL}",
+                    credentialsId: "${GIT_CRED_ID}"
             }
         }
 
@@ -119,26 +127,22 @@ pipeline {
                     // Récupérer le SHA court du commit
                     def commit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 
-                    env.IMAGE_TAG_BUILD  = "${APP_NAME}:${BUILD_NUMBER}"
-                    env.IMAGE_TAG_SHA    = "${APP_NAME}:${commit}"
-                    env.IMAGE_TAG_LATEST = "${APP_NAME}:latest"
+                    env.IMAGE_TAG_BUILD   = "${APP_NAME}:${BUILD_NUMBER}"
+                    env.IMAGE_TAG_SHA     = "${APP_NAME}:${commit}"
+                    env.IMAGE_TAG_VERSION = "${APP_NAME}:${PROJECT_VERSION}"
 
-                    env.IMAGE_NAME_BUILD  = "${IMAGE_REPO}:${BUILD_NUMBER}"
-                    env.IMAGE_NAME_SHA    = "${IMAGE_REPO}:${commit}"
-                    env.IMAGE_NAME_LATEST = "${IMAGE_REPO}:latest"
+                    env.IMAGE_NAME_BUILD   = "${IMAGE_REPO}:${BUILD_NUMBER}"
+                    env.IMAGE_NAME_SHA     = "${IMAGE_REPO}:${commit}"
+                    env.IMAGE_NAME_VERSION = "${IMAGE_REPO}:${PROJECT_VERSION}"
 
                     // Build sans BuildKit (buildx non installé sur l'agent)
                     sh """
                         docker build \\
                           -t ${IMAGE_NAME_BUILD} \\
                           -t ${IMAGE_NAME_SHA} \\
+                          -t ${IMAGE_NAME_VERSION} \\
                           .
                     """
-
-                    // Tag latest uniquement sur main
-                    if ((env.BRANCH_NAME ?: 'main') == 'main') {
-                        sh "docker tag ${IMAGE_NAME_BUILD} ${IMAGE_NAME_LATEST}"
-                    }
                 }
             }
         }
@@ -157,7 +161,7 @@ pipeline {
                         SNYK_EXIT=$?
 
                         echo "[SNYK] Lancement snyk monitor..."
-                        ${SNYK_CLI} monitor --file=pom.xml --project-name=task-rest-api || true
+                        ${SNYK_CLI} monitor --file=pom.xml --project-name=task-rest-api --org="$SNYK_ORG" || true
 
                         echo "[SNYK] Génération rapport HTML..."
                         python3 scripts/generate_snyk_report.py || true
@@ -220,10 +224,7 @@ pipeline {
 
                         docker push ${IMAGE_NAME_BUILD}
                         docker push ${IMAGE_NAME_SHA}
-
-                        if [ "${BRANCH_NAME:-main}" = "main" ]; then
-                          docker push ${IMAGE_NAME_LATEST}
-                        fi
+                        docker push ${IMAGE_NAME_VERSION}
 
                         docker logout ${REGISTRY}
                     '''
@@ -237,9 +238,7 @@ pipeline {
                     echo "[CLEANUP] Suppression des images locales construites..."
                     docker rmi ${IMAGE_NAME_BUILD} || true
                     docker rmi ${IMAGE_NAME_SHA} || true
-                    if [ "${BRANCH_NAME:-main}" = "main" ]; then
-                      docker rmi ${IMAGE_NAME_LATEST} || true
-                    fi
+                    docker rmi ${IMAGE_NAME_VERSION} || true
 
                     # Pas de docker system prune ici: trop agressif sur un agent partagé.
                     # Si tu veux vraiment l'activer, fais-le manuellement ou ajoute un flag dédié.
