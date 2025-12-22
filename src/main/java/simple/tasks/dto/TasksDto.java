@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Schema(name = "TaskRequest", description = "Payload pour créer ou mettre à jour une tâche")
 public class TasksDto {
 
-    @Schema(description = "Nom de la tâche", example = "Faire les courses", required = true)
+    @Schema(description = "Nom de la tâche", example = "Faire les courses")
     private String name;
 
     public TasksDto(String name) {
