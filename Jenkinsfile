@@ -50,7 +50,8 @@ pipeline {
 
         // Outils sécurité
         SNYK_CLI          = "snyk"
-        SNYK_ORG          = "brhulla"   // slug de ton organisation Snyk (dashboard)
+        // Identifiant ou slug de ton organisation Snyk (utilisé avec --org=)
+        SNYK_ORG          = "967f8e17-af81-450e-98d1-e19b3e27f316"
 
         // --- Feature flags de durcissement (ON/OFF) ---
         FAIL_ON_SONAR_QGATE  = "false"   // si Quality Gate != OK -> échec build (via sonar.qualitygate.wait)
@@ -156,12 +157,14 @@ pipeline {
 
                         export SNYK_TOKEN="$SNYK_TOKEN"
 
-                        echo "[SNYK] Lancement snyk test..."
-                        ${SNYK_CLI} test --severity-threshold=high --file=pom.xml --json > reports/snyk/snyk-report.json
+                        IMAGE_TO_SCAN="${IMAGE_NAME_BUILD}"
+
+                        echo "[SNYK] Lancement snyk container test sur ${IMAGE_TO_SCAN}..."
+                        ${SNYK_CLI} container test "${IMAGE_TO_SCAN}" --severity-threshold=high --org="$SNYK_ORG" --json > reports/snyk/snyk-report.json
                         SNYK_EXIT=$?
 
-                        echo "[SNYK] Lancement snyk monitor..."
-                        ${SNYK_CLI} monitor --file=pom.xml --project-name=task-rest-api --org="$SNYK_ORG" || true
+                        echo "[SNYK] Lancement snyk container monitor..."
+                        ${SNYK_CLI} container monitor "${IMAGE_TO_SCAN}" --org="$SNYK_ORG" --project-name=task-rest-api || true
 
                         echo "[SNYK] Génération rapport HTML..."
                         python3 scripts/generate_snyk_report.py || true
