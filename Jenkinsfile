@@ -100,7 +100,7 @@ pipeline {
                     sh '''
                         ./mvnw sonar:sonar \
                           -Dsonar.host.url="$SONAR_URL" \
-                          -Dsonar.login="$SONAR_TOKEN" \
+                          -Dsonar.token="$SONAR_TOKEN" \
                           -Dsonar.projectKey=$SONAR_PROJECT_KEY \
                           -Dsonar.projectName=$SONAR_PROJECT_NAME \
                           -Dsonar.projectVersion=$SONAR_PROJECT_VERSION \

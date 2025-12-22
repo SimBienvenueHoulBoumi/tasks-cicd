@@ -1,5 +1,6 @@
 package simple.tasks.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AccessLevel;
 import lombok.Data;
@@ -24,16 +25,17 @@ public class TaskResource {
 
     @Getter(AccessLevel.NONE)
     @Setter(AccessLevel.NONE)
+    @JsonProperty("_links")
     @Schema(
         description = "Liens hypermedia relatifs à cette ressource",
         example = "{\"self\":\"/tasks/1\",\"tasks\":\"/tasks\"}"
     )
-    private Map<String, String> _links;
+    private Map<String, String> links;
 
     public TaskResource(Tasks task) {
         this.id = task.getId();
         this.name = task.getName();
-        this._links = Map.of(
+        this.links = Map.of(
             "self", "/tasks/" + this.id,
             "tasks", "/tasks"
         );
@@ -42,15 +44,15 @@ public class TaskResource {
     /**
      * Getter défensif pour éviter d'exposer la représentation interne de la Map.
      */
-    public Map<String, String> get_links() {
-        return _links == null ? null : Map.copyOf(_links);
+    public Map<String, String> getLinks() {
+        return links == null ? null : Map.copyOf(links);
     }
 
     /**
      * Setter défensif pour éviter de stocker une Map externe modifiable.
      */
-    public void set_links(Map<String, String> links) {
-        this._links = links == null ? null : Map.copyOf(links);
+    public void setLinks(Map<String, String> links) {
+        this.links = links == null ? null : Map.copyOf(links);
     }
 }
 
