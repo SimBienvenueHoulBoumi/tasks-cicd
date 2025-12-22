@@ -55,6 +55,11 @@ pipeline {
         // Nom du projet container dans Snyk pour ce repo
         SNYK_PROJECT_NAME_CONTAINER = "task-rest-api-container"
 
+        // Argo CD (server tournant en local via port-forward : kubectl port-forward svc/argocd-server -n argocd 9090:80)
+        ARGOCD_SERVER     = "host.docker.internal:9090" // vu depuis le conteneur Jenkins sur Mac
+        ARGOCD_APP_NAME   = "tasks-app"
+        ARGOCD_ENABLED    = "false"                     // passer à true pour activer le déploiement ArgoCD
+
         // --- Feature flags de durcissement (ON/OFF) ---
         FAIL_ON_SONAR_QGATE  = "false"   // si Quality Gate != OK -> échec build (via sonar.qualitygate.wait)
         FAIL_ON_SNYK_VULNS   = "false"   // si Snyk trouve des vulnérabilités -> échec (sinon warning)
@@ -225,6 +230,28 @@ pipeline {
                         docker push ${IMAGE_NAME_VERSION}
 
                         docker logout ${NEXUS_REGISTRY}
+                    '''
+                }
+            }
+        }
+
+        stage('🚀 Deploy via Argo CD') {
+            when {
+                expression { env.ARGOCD_ENABLED == 'true' }
+            }
+            steps {
+                withCredentials([string(credentialsId: 'ARGOCD_TOKEN', variable: 'ARGOCD_TOKEN')]) {
+                    sh '''
+                        echo "[ARGOCD] Déploiement de l'application ${ARGOCD_APP_NAME} via ${ARGOCD_SERVER}..."
+
+                        # Connexion avec un token API (compte jenkins dans Argo CD)
+                        argocd login "${ARGOCD_SERVER}" \
+                          --auth-token "$ARGOCD_TOKEN" \
+                          --grpc-web \
+                          --insecure
+
+                        # Synchronisation de l'application (déploiement)
+                        argocd app sync "${ARGOCD_APP_NAME}" --grpc-web
                     '''
                 }
             }
