@@ -24,8 +24,8 @@ pipeline {
         GIT_BRANCH      = "main"
         GIT_CRED_ID     = "JENKINS_AGENT"
 
-        REGISTRY          = "localhost:8083"
-        IMAGE_REPO        = "${REGISTRY}/simdev/${PROJECT_NAME}"
+        NEXUS_REGISTRY          = "localhost:8083"
+        IMAGE_REPO        = "${NEXUS_REGISTRY}/simdev/${PROJECT_NAME}"
 
         // Tags d'image (les valeurs SHA sont recalculées dans le stage Docker)
         IMAGE_TAG_BUILD   = "${APP_NAME}:${BUILD_NUMBER}"
