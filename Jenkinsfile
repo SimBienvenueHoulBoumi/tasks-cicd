@@ -58,7 +58,7 @@ pipeline {
         // Argo CD (server tournant en local via port-forward : kubectl port-forward svc/argocd-server -n argocd 9090:80)
         ARGOCD_SERVER     = "host.docker.internal:9090" // vu depuis le conteneur Jenkins sur Mac
         ARGOCD_APP_NAME   = "tasks-app"
-        ARGOCD_ENABLED    = "false"                     // passer à true pour activer le déploiement ArgoCD
+        ARGOCD_ENABLED    = "true"                     // passer à true pour activer le déploiement ArgoCD
 
         // --- Feature flags de durcissement (ON/OFF) ---
         FAIL_ON_SONAR_QGATE  = "false"   // si Quality Gate != OK -> échec build (via sonar.qualitygate.wait)
@@ -236,9 +236,6 @@ pipeline {
         }
 
         stage('🚀 Deploy via Argo CD') {
-            when {
-                expression { env.ARGOCD_ENABLED == 'true' }
-            }
             steps {
                 withCredentials([string(credentialsId: 'ARGOCD_TOKEN', variable: 'ARGOCD_TOKEN')]) {
                     sh '''
