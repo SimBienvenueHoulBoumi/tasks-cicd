@@ -117,13 +117,6 @@ pipeline {
             }
         }
 
-        stage('🏗️ Build (noop)') {
-            steps {
-                echo "Le jar a déjà été construit pendant '🧪 Tests & Build'."
-                sh 'ls -1 target/*.jar || echo "Aucun jar trouvé !"'
-            }
-        }
-
         stage('🐳 Docker Build & Tag') {
             steps {
                 script {
