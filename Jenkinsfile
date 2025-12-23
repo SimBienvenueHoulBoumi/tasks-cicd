@@ -59,7 +59,7 @@ pipeline {
         // Depuis le conteneur Jenkins sur Mac, on y accède via host.docker.internal:9090
         ARGOCD_SERVER     = "host.docker.internal:9090"
         ARGOCD_APP_NAME   = "tasks-app"
-        ARGOCD_ENABLED    = "false"                     // passer à true pour activer le déploiement ArgoCD
+        ARGOCD_ENABLED    = "true"                     // passer à true pour activer le déploiement ArgoCD
 
         // --- Feature flags de durcissement (ON/OFF) ---
         FAIL_ON_SONAR_QGATE  = "false"   // si Quality Gate != OK -> échec build (via sonar.qualitygate.wait)
