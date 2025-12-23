@@ -236,26 +236,55 @@ pipeline {
             }
         }
 
-        stage('🚀 Deploy via Argo CD') {
+        stage('🚀 Argo CD: Login') {
+            when {
+                expression { env.ARGOCD_ENABLED == 'true' }
+            }
             steps {
                 withCredentials([string(credentialsId: 'ARGOCD_TOKEN', variable: 'ARGOCD_TOKEN')]) {
                     sh '''
-                        echo "[ARGOCD] Déploiement de l'application ${ARGOCD_APP_NAME} via ${ARGOCD_SERVER}..."
+                        echo "[ARGOCD] Connexion à ${ARGOCD_SERVER} pour le compte jenkins..."
 
                         # Connexion avec un token API (compte jenkins dans Argo CD)
-                        # ArgoCD est exposé en HTTP sur http://localhost:9090 côté host,
-                        # donc on utilise --grpc-web et --plaintext (pas besoin de --insecure).
+                        # Argo CD est exposé en HTTP sur http://localhost:9090 côté host,
+                        # donc on utilise --grpc-web et --plaintext (pas de TLS).
                         argocd login "${ARGOCD_SERVER}" \
                           --auth-token "$ARGOCD_TOKEN" \
                           --grpc-web \
-                          --plaintext
-
-                        # Synchronisation de l'application (déploiement)
-                        argocd app sync "${ARGOCD_APP_NAME}" --grpc-web
+                          --plaintext || exit 1
                     '''
                 }
             }
         }
+
+        // stage('🚀 Argo CD: Sync') {
+        //     when {
+        //         expression { env.ARGOCD_ENABLED == 'true' }
+        //     }
+        //     steps {
+        //         sh '''
+        //             echo "[ARGOCD] Synchronisation de l'application ${ARGOCD_APP_NAME}..."
+        //             argocd app sync "${ARGOCD_APP_NAME}" --grpc-web --plaintext || exit 1
+        //         '''
+        //     }
+        // }
+
+        // stage('🚀 Argo CD: Wait for health') {
+        //     when {
+        //         expression { env.ARGOCD_ENABLED == 'true' }
+        //     }
+        //     steps {
+        //         sh '''
+        //             echo "[ARGOCD] Attente que l'application ${ARGOCD_APP_NAME} soit synchronisée et saine..."
+        //             argocd app wait "${ARGOCD_APP_NAME}" \
+        //               --health \
+        //               --sync \
+        //               --timeout 300 \
+        //               --grpc-web \
+        //               --plaintext || true
+        //         '''
+        //     }
+        // }
 
         stage('🧹 Cleanup') {
             steps {
