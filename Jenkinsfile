@@ -55,12 +55,6 @@ pipeline {
         // Nom du projet container dans Snyk pour ce repo
         SNYK_PROJECT_NAME_CONTAINER = "task-rest-api-container"
 
-        // Argo CD exposé via port-forward sur http://localhost:9090/applications
-        // Depuis le conteneur Jenkins sur Mac, on y accède via host.docker.internal:9090
-        ARGOCD_SERVER     = "host.docker.internal:9090"
-        ARGOCD_APP_NAME   = "tasks-app"
-        ARGOCD_ENABLED    = "true"                     // passer à true pour activer le déploiement ArgoCD
-
         // --- Feature flags de durcissement (ON/OFF) ---
         FAIL_ON_SONAR_QGATE  = "false"   // si Quality Gate != OK -> échec build (via sonar.qualitygate.wait)
         FAIL_ON_SNYK_VULNS   = "false"   // si Snyk trouve des vulnérabilités -> échec (sinon warning)
@@ -233,53 +227,6 @@ pipeline {
                         docker logout ${NEXUS_REGISTRY}
                     '''
                 }
-            }
-        }
-
-        stage('🚀 Argo CD: Login') {
-            when {
-                expression { env.ARGOCD_ENABLED == 'true' }
-            }
-            steps {
-                withCredentials([string(credentialsId: 'ARGOCD_TOKEN', variable: 'ARGOCD_TOKEN')]) {
-                    sh '''
-                        echo "[ARGOCD] Connexion à ${ARGOCD_SERVER} pour le compte jenkins..."
-
-                        argocd login "${ARGOCD_SERVER}" \
-                          --auth-token "$ARGOCD_TOKEN" \
-                          --grpc-web \
-                          --plaintext || exit 1
-                    '''
-                }
-            }
-        }
-
-        stage('🚀 Argo CD: Sync') {
-            when {
-                expression { env.ARGOCD_ENABLED == 'true' }
-            }
-            steps {
-                sh '''
-                    echo "[ARGOCD] Synchronisation de l'application ${ARGOCD_APP_NAME}..."
-                    argocd app sync "${ARGOCD_APP_NAME}" --grpc-web --plaintext || exit 1
-                '''
-            }
-        }
-
-        stage('🚀 Argo CD: Wait for health') {
-            when {
-                expression { env.ARGOCD_ENABLED == 'true' }
-            }
-            steps {
-                sh '''
-                    echo "[ARGOCD] Attente que l'application ${ARGOCD_APP_NAME} soit synchronisée et saine..."
-                    argocd app wait "${ARGOCD_APP_NAME}" \
-                      --health \
-                      --sync \
-                      --timeout 300 \
-                      --grpc-web \
-                      --plaintext || true
-                '''
             }
         }
 
