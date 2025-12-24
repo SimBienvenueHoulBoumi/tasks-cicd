@@ -60,7 +60,7 @@ pipeline {
         FAIL_ON_SNYK_VULNS   = "false"   // si Snyk trouve des vulnérabilités -> échec (sinon warning)
         FAIL_ON_TRIVY_VULNS  = "false"   // idem pour Trivy
         RUN_SMOKE_TESTS      = "false"   // activer un stage de smoke tests HTTP (si déploiement derrière)
-        ELK_ENABLED          = "false"   // activer l'envoi des infos de build vers Elasticsearch
+        ELK_ENABLED          = "true"   // activer l'envoi des infos de build vers Elasticsearch
         ELASTICSEARCH_URL    = "http://elasticsearch:9200"
         ELK_BUILD_INDEX      = "jenkins-builds"
     }
