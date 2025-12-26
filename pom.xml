@@ -194,6 +194,10 @@
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
                 <version>9.0.9</version>
+                <configuration>
+                    <!-- Ne fait pas échouer le build si la NVD est inaccessible (403/404, throttling, etc.) -->
+                    <failOnError>false</failOnError>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
