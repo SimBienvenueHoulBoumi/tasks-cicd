@@ -2,10 +2,6 @@ package simple.tasks.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AccessLevel;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 import simple.tasks.models.Tasks;
 
 import java.util.Map;
@@ -13,46 +9,43 @@ import java.util.Map;
 /**
  * DTO de réponse enrichi avec des liens "hypermedia-like" dans le champ _links.
  */
-@Data
 @Schema(name = "TaskResource", description = "Représente une tâche avec des liens hypermedia")
-public class TaskResource {
+public record TaskResource(
 
     @Schema(description = "Identifiant technique de la tâche", example = "1")
-    private Long id;
+    Long id,
 
     @Schema(description = "Nom de la tâche", example = "Faire les courses")
-    private String name;
+    String name,
 
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
     @JsonProperty("_links")
     @Schema(
         description = "Liens hypermedia relatifs à cette ressource",
         example = "{\"self\":\"/tasks/1\",\"tasks\":\"/tasks\"}"
     )
-    private Map<String, String> links;
+    Map<String, String> links
+) {
 
+    /**
+     * Constructeur de confort depuis l'entité de domaine {@link Tasks}.
+     */
     public TaskResource(Tasks task) {
-        this.id = task.getId();
-        this.name = task.getName();
-        this.links = Map.of(
-            "self", "/tasks/" + this.id,
-            "tasks", "/tasks"
+        this(
+            task.getId(),
+            task.getName(),
+            Map.of(
+                "self", "/tasks/" + task.getId(),
+                "tasks", "/tasks"
+            )
         );
     }
 
     /**
-     * Getter défensif pour éviter d'exposer la représentation interne de la Map.
+     * Accesseur défensif pour éviter d'exposer la représentation interne de la Map.
      */
-    public Map<String, String> getLinks() {
+    @Override
+    public Map<String, String> links() {
         return links == null ? null : Map.copyOf(links);
-    }
-
-    /**
-     * Setter défensif pour éviter de stocker une Map externe modifiable.
-     */
-    public void setLinks(Map<String, String> links) {
-        this.links = links == null ? null : Map.copyOf(links);
     }
 }
 
