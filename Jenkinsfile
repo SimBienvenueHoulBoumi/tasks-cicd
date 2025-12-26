@@ -99,6 +99,7 @@ pipeline {
                         ./mvnw org.owasp:dependency-check-maven:check \
                           -DskipTests \
                           -Dformat=HTML,JSON \
+                          -DnvdApiKey="$NVD_API_KEY" \
                           -Danalyzer.nvd.updateOnce=true
 
                         # Copie des rapports bruts générés par le plugin

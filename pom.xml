@@ -194,10 +194,6 @@
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
                 <version>9.0.9</version>
-                <configuration>
-                    <!-- La clé NVD est fournie via la variable d'environnement NVD_API_KEY (Jenkins) -->
-                    <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
-                </configuration>
                 <executions>
                     <execution>
                         <goals>
