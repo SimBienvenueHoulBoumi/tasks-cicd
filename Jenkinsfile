@@ -177,7 +177,8 @@ pipeline {
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'reports/snyk/snyk-report.*', allowEmptyArchive: true
+                    // Archive tout le répertoire Snyk (HTML + CSS + JSON)
+                    archiveArtifacts artifacts: 'reports/snyk/**', allowEmptyArchive: true
                 }
             }
         }
@@ -207,7 +208,8 @@ pipeline {
             }
             post {
                 always {
-                    archiveArtifacts artifacts: 'reports/trivy/*.*', allowEmptyArchive: true
+                    // Archive tout le répertoire Trivy (HTML + CSS + JSON)
+                    archiveArtifacts artifacts: 'reports/trivy/**', allowEmptyArchive: true
                 }
             }
         }
