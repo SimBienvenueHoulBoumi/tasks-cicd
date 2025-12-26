@@ -60,9 +60,6 @@ pipeline {
         FAIL_ON_SNYK_VULNS   = "false"   // si Snyk trouve des vulnérabilités -> échec (sinon warning)
         FAIL_ON_TRIVY_VULNS  = "false"   // idem pour Trivy
         RUN_SMOKE_TESTS      = "false"   // activer un stage de smoke tests HTTP (si déploiement derrière)
-        ELK_ENABLED          = "true"   // activer l'envoi des infos de build vers Elasticsearch
-        ELASTICSEARCH_URL    = "http://elasticsearch:9200"
-        ELK_BUILD_INDEX      = "jenkins-builds"
     }
 
     stages {
@@ -233,32 +230,6 @@ pipeline {
             }
         }
 
-        stage('📈 Index build dans Elasticsearch') {
-            when {
-                expression { return env.ELK_ENABLED == 'true' }
-            }
-            steps {
-                script {
-                    // Prépare un petit document JSON avec les infos principales du build
-                    def payload = """
-                        {
-                            "job": "${env.JOB_NAME}",
-                            "build_number": "${env.BUILD_NUMBER}",
-                            "status": "${currentBuild.currentResult}",
-                            "image_build": "${env.IMAGE_NAME_BUILD}"
-                        }
-                    """
-                    writeFile file: 'elk_build.json', text: payload
-
-                    // Envoi vers Elasticsearch (service docker-compose: elasticsearch:9200)
-                    sh '''
-                        curl -s -X POST "${ELASTICSEARCH_URL}/${ELK_BUILD_INDEX}/_doc" \
-                          -H "Content-Type: application/json" \
-                          -d @elk_build.json || true
-                    '''
-                }
-            }
-        }
 
         stage('🧹 Cleanup') {
             steps {
