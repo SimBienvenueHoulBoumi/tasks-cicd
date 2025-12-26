@@ -17,7 +17,8 @@ pipeline {
         // --- App & Docker ---
         APP_NAME        = "tasks-cicd"
         PROJECT_NAME    = "task-rest-api"
-        PROJECT_VERSION = "0.0.1"
+        // La version applicative est lue dynamiquement depuis le pom.xml (voir stage 📥 Checkout)
+        PROJECT_VERSION = ""
 
         // SCM
         GIT_REPO_URL    = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
@@ -41,7 +42,8 @@ pipeline {
         SONAR_URL         = "http://sonarqube:9000"
         SONAR_PROJECT_KEY = "task-rest-api"
         SONAR_PROJECT_NAME = "task-rest-api"
-        SONAR_PROJECT_VERSION = "0.0.1"
+        // Surchargée au runtime avec la version Maven du projet
+        SONAR_PROJECT_VERSION = ""
         SONAR_SOURCES = "src/"
         SONAR_JAVA_BINARIES = "target/classes"
         SONAR_JUNIT_REPORTS_PATH = "target/surefire-reports/"
@@ -71,6 +73,19 @@ pipeline {
                 git branch: "${GIT_BRANCH}",
                     url: "${GIT_REPO_URL}",
                     credentialsId: "${GIT_CRED_ID}"
+
+                script {
+                    // Récupère la version Maven déclarée dans le pom.xml
+                    def v = sh(
+                        script: './mvnw help:evaluate -Dexpression=project.version -q -DforceStdout',
+                        returnStdout: true
+                    ).trim()
+
+                    env.PROJECT_VERSION = v
+                    env.SONAR_PROJECT_VERSION = v
+
+                    echo "Version Maven détectée : ${env.PROJECT_VERSION}"
+                }
             }
         }
 
