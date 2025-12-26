@@ -25,7 +25,8 @@ pipeline {
         GIT_CRED_ID     = "JENKINS_AGENT"
 
         NEXUS_REGISTRY    = "localhost:8083"
-        IMAGE_REPO        = "${NEXUS_REGISTRY}/simdev/${PROJECT_NAME}"
+        AUTHORITY         = "simdev"
+        IMAGE_REPO        = "${NEXUS_REGISTRY}/${AUTHORITY}/${PROJECT_NAME}"
 
         // Tags d'image (les valeurs SHA sont recalculées dans le stage Docker)
         IMAGE_TAG_BUILD   = "${APP_NAME}:${BUILD_NUMBER}"
@@ -192,7 +193,8 @@ pipeline {
                       -o reports/trivy/trivy-report.json ${IMAGE_NAME_BUILD}
                     TRIVY_EXIT=$?
 
-                    python3 scripts/generate_trivy_report.py reports/trivy/trivy-report.json reports/trivy/trivy-report.html || true
+                    echo "[TRIVY] Génération rapport HTML..."
+                    python3 scripts/generate_trivy_report.py || true
 
                     if [ "$FAIL_ON_TRIVY_VULNS" = "true" ] && [ "$TRIVY_EXIT" -ne 0 ]; then
                       echo "[TRIVY] Vulnérabilités détectées et FAIL_ON_TRIVY_VULNS=true -> échec pipeline"
