@@ -12,7 +12,7 @@ public class TasksCreateTask {
     private final TasksRepository tasksRepository;
 
     public Tasks createTask(TasksDto task) {
-        Tasks newTask = new Tasks(task.getName());
+        Tasks newTask = new Tasks(task.name());
         return tasksRepository.save(newTask);
     }
 }

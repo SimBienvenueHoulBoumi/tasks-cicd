@@ -16,7 +16,7 @@ public class UpdateTask {
         Tasks existingTask = tasksRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Task not found with id " + id));
         
-        existingTask.setName(task.getName());
+        existingTask.setName(task.name());
         return tasksRepository.save(existingTask);
     }
 }
