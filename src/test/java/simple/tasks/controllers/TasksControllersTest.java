@@ -1,17 +1,13 @@
 package simple.tasks.controllers;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import simple.tasks.dto.TaskResource;
 import simple.tasks.dto.TasksDto;
 import simple.tasks.models.Tasks;
 import simple.tasks.services.*;
@@ -24,36 +20,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Tests de contrôleur pour {@link TasksControllers}.
  * <p>
- * Ces tests couvrent les principaux endpoints REST pour améliorer la
- * couverture de code et valider le mapping JSON de base.
+ * Utilise @WebMvcTest pour charger uniquement la couche Web
+ * (contrôleur + configuration MVC), tout en mockant les services.
  */
-@ExtendWith(MockitoExtension.class)
+@WebMvcTest(controllers = TasksControllers.class)
 class TasksControllersTest {
 
+    @Autowired
     private MockMvc mockMvc;
 
-    @InjectMocks
-    private TasksControllers controller;
-
-    @Mock
+    @MockBean
     private TasksCreateTask createTasksService;
 
-    @Mock
+    @MockBean
     private TasksGetTaskById tasksGetTaskByIdService;
 
-    @Mock
+    @MockBean
     private TasksGetAllTasks tasksGetAllTasks;
 
-    @Mock
+    @MockBean
     private UpdateTask updateTasksService;
 
-    @Mock
+    @MockBean
     private DeleteTask deleteTasksService;
-
-    @BeforeEach
-    void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
-    }
 
     @Test
     @DisplayName("GET /tasks doit retourner la liste des tâches avec un statut 200")

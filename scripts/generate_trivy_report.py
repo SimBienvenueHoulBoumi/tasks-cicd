@@ -3,6 +3,32 @@ from html import escape
 from pathlib import Path
 
 
+def load_trivy_json(path: Path):
+    """
+    Charge le JSON Trivy de façon robuste.
+    Gère à la fois un JSON unique et, en fallback, un fichier avec plusieurs lignes JSON.
+    """
+    if not path.exists():
+        print(f"❌ Fichier Trivy introuvable: {path}")
+        return None
+
+    content = path.read_text(errors="ignore")
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        # Fallback : essayer ligne par ligne (cas où Trivy écrirait plusieurs JSON)
+        for line in reversed(content.splitlines()):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                return json.loads(line)
+            except json.JSONDecodeError:
+                continue
+        print("❌ Aucun JSON valide trouvé dans le rapport Trivy.")
+        return None
+
+
 def render_html(vulns):
     """
     Génère un rapport HTML Trivy avec du CSS pur (sans Tailwind) et CSS EXTERNE.
@@ -266,32 +292,18 @@ td {
 
 def main():
     json_path = Path("reports/trivy/trivy-report.json")
-    if not json_path.exists():
-        print("❌ Fichier Trivy introuvable.")
-        return
-
-    try:
-        # Avec Trivy CLI `--format json`, le fichier contient un unique JSON valide
-        data = json.loads(json_path.read_text())
-        if isinstance(data, str):
-            print("❌ Le fichier Trivy contient une chaîne et non un objet JSON. Contenu inattendu.")
-            return
-    except json.JSONDecodeError as e:
-        print(f"❌ JSON Trivy invalide: {e}")
-                return
-    except Exception as e:
-        print(f"❌ Erreur de lecture du fichier: {e}")
-        return
-
-    all_vulns = []
-    for target in data.get("Results", []):
-        for vuln in target.get("Vulnerabilities", []):
-            if vuln.get("Severity") in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
-                all_vulns.append(vuln)
+    data = load_trivy_json(json_path)
 
     # Écrit la feuille de style externe pour Jenkins / navigateur
     css_path = Path("reports/trivy/trivy-report.css")
     css_path.write_text(TRIVY_DASHBOARD_CSS, encoding="utf-8")
+
+    all_vulns = []
+    if data:
+        for target in data.get("Results", []):
+            for vuln in target.get("Vulnerabilities", []):
+                if vuln.get("Severity") in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+                    all_vulns.append(vuln)
 
     html = render_html(all_vulns)
     output_path = Path("reports/trivy/trivy-report.html")

@@ -11,7 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(name = "TaskRequest", description = "Payload pour créer ou mettre à jour une tâche")
 public record TasksDto(
 
-    @Schema(description = "Nom de la tâche", example = "Faire les courses", required = true)
+    @Schema(description = "Nom de la tâche", example = "Faire les courses")
     String name
 ) {
 }
