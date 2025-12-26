@@ -454,7 +454,8 @@ def main():
     if not data:
         return
 
-    html = render_html(data)
+    # Utilise la version en CSS pur (sans Tailwind)
+    html = render_html_pure(data)
     out = Path("reports/snyk/snyk-report.html")
     out.write_text(html, encoding="utf-8")
     print(f"✅ Rapport HTML Snyk généré : {out}")
