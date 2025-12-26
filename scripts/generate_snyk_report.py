@@ -560,8 +560,10 @@ td {
   text-align: center;
   border-radius: 999px;
   padding: 4px 10px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
 }
 .sev-critical { background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
 .sev-high { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
