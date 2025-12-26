@@ -214,6 +214,34 @@ pipeline {
             }
         }
 
+        stage('🛡️ OWASP Dependency-Check') {
+            steps {
+                sh '''
+                    set +e
+                    mkdir -p reports/dependency-check
+
+                    echo "[OWASP] Lancement du plugin Maven dependency-check (HTML + JSON)..."
+                    ./mvnw org.owasp:dependency-check-maven:check -DskipTests -Dformat=HTML,JSON
+
+                    # Copie des rapports bruts générés par le plugin
+                    if [ -f target/dependency-check-report.json ]; then
+                      cp target/dependency-check-report.json reports/dependency-check/dependency-check-report.json
+                    fi
+                    if [ -f target/dependency-check-report.html ]; then
+                      cp target/dependency-check-report.html reports/dependency-check/dependency-check-report-raw.html
+                    fi
+
+                    echo "[OWASP] Génération du rapport HTML custom..."
+                    python3 scripts/generate_dependencycheck_report.py || true
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'reports/dependency-check/**, target/dependency-check-report.*', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('📦 Push to Nexus') {
             steps {
                 withCredentials([usernamePassword(
