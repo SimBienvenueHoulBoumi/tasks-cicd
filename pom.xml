@@ -195,13 +195,14 @@
                 <artifactId>dependency-check-maven</artifactId>
                 <version>9.0.9</version>
                 <configuration>
-                    <nvdApiKey>${NVD_API_KEY}</nvdApiKey>
+                    <!-- La clé NVD est fournie via la variable d'environnement NVD_API_KEY (Jenkins) -->
+                    <nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
                 </configuration>
                 <executions>
                     <execution>
-                    <goals>
-                        <goal>check</goal>
-                    </goals>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
