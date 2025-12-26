@@ -448,14 +448,287 @@ def render_html_pure(data: dict) -> str:
   </body>
 </html>"""
     return html
+
+
+# --- Nouvelle version "dashboard" avec CSS externe (pour Jenkins / CSP) ---
+
+SNYK_DASHBOARD_CSS = """\
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 24px 16px 32px;
+  background: #f3f4f6;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #111827;
+}
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.header {
+  border-radius: 24px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  padding: 22px 24px 18px;
+  box-shadow: 0 22px 50px rgba(148,163,184,0.25);
+}
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #4f46e5;
+}
+h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0.03em;
+}
+.subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #6b7280;
+}
+.summary-row {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #4b5563;
+}
+.summary-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  padding: 2px 8px;
+}
+.summary-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 10px;
+}
+.summary-card {
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  padding: 10px 12px;
+}
+.summary-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+.summary-value {
+  font-size: 18px;
+  font-weight: 700;
+}
+.crit { color: #b91c1c; }
+.high { color: #dc2626; }
+.med { color: #d97706; }
+.low { color: #0369a1; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 18px;
+}
+thead th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #9ca3af;
+  padding: 0 8px 4px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+tbody tr + tr td {
+  border-top: 1px solid #f3f4f6;
+}
+td {
+  padding: 8px;
+  vertical-align: top;
+  font-size: 13px;
+}
+.sev {
+  width: 96px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+.sev-critical { background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
+.sev-high { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
+.sev-medium { background:#fffbeb; color:#d97706; border-color:#fde68a; }
+.sev-low { background:#eff6ff; color:#0369a1; border-color:#bfdbfe; }
+.sev-unknown { background:#e5e7eb; color:#374151; }
+.v-title {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.v-id {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+.v-id span {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: #111827;
+}
+.v-meta {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+}
+.chip {
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.chip-label {
+  color: #6b7280;
+}
+.chip-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.v-link {
+  margin-top: 6px;
+  font-size: 11px;
+}
+.v-link a {
+  color: #2563eb;
+  text-decoration: none;
+}
+.v-link a:hover {
+  text-decoration: underline;
+}
+.no-data {
+  text-align: center;
+  font-size: 13px;
+  color: #6b7280;
+  padding: 16px 0;
+}
+@media (max-width: 768px) {
+  .summary-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+"""
+
+
+def render_html_dashboard(data: dict) -> str:
+    """HTML principal qui référence la feuille CSS externe."""
+    vulns = data.get("vulnerabilities", [])
+
+    # Compter par sévérité
+    severities = ["critical", "high", "medium", "low"]
+    counts = {s: 0 for s in severities}
+    for v in vulns:
+        sev = (v.get("severity") or "").lower()
+        if sev in counts:
+            counts[sev] += 1
+
+    # Lignes du tableau
+    rows = []
+    for v in vulns:
+        sev = (v.get("severity") or "").lower()
+        pkg = v.get("packageName") or v.get("moduleName") or "n/a"
+        version = v.get("version") or "?"
+        title = v.get("title") or v.get("name") or ""
+        id_ = v.get("id") or ""
+        from_chain = " → ".join(v.get("from", [])) if v.get("from") else ""
+        url = v.get("url") or ""
+
+        rows.append(
+            f"<tr>"
+            f"<td class='sev sev-{escape(sev or 'unknown')}'>{escape((sev or 'UNKNOWN').upper())}</td>"
+            f"<td class='col-main'>"
+            f"<div class='v-title'>{escape(title or id_)}</div>"
+            f"<p class='v-id'>ID : <span>{escape(id_ or 'N/A')}</span></p>"
+            f"<div class='v-meta'>"
+            f"<span class='chip'><span class='chip-label'>Package</span><span class='chip-value'>{escape(pkg)}@{escape(str(version))}</span></span>"
+            f"{f'<span class=\"chip\"><span class=\"chip-label\">Chemin</span><span class=\"chip-value\">{escape(from_chain)}</span></span>' if from_chain else ''}"
+            f"</div>"
+            f"{f'<p class=\"v-link\"><a href=\"{escape(url)}\" target=\"_blank\" rel=\"noopener noreferrer\">Voir le détail sur Snyk ↗</a></p>' if url else ''}"
+            f"</td></tr>"
+        )
+
+    body_rows = "".join(rows) if rows else (
+        "<tr><td colspan='2' class='no-data'>Aucune vulnérabilité détectée.</td></tr>"
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Rapport Snyk</title>
+    <link rel="stylesheet" href="snyk-report.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="header">
+        <p class="eyebrow">Snyk</p>
+        <h1>Rapport Snyk</h1>
+        <p class="subtitle">Analyse des vulnérabilités dans les dépendances du projet.</p>
+        <div class="summary-row">
+          <span class="summary-pill">Total : <strong>{len(vulns)}</strong></span>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-label">Critiques</div>
+            <div class="summary-value crit">{counts["critical"]}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Hautes</div>
+            <div class="summary-value high">{counts["high"]}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Moyennes</div>
+            <div class="summary-value med">{counts["medium"]}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Basses</div>
+            <div class="summary-value low">{counts["low"]}</div>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:110px;">Gravité</th>
+              <th>Vulnérabilité</th>
+            </tr>
+          </thead>
+          <tbody>
+{body_rows}
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </body>
+</html>"""
 def main():
     json_path = Path("reports/snyk/snyk-report.json")
     data = load_snyk_json(json_path)
     if not data:
         return
 
-    # Utilise la version en CSS pur (sans Tailwind)
-    html = render_html_pure(data)
+    # Écrit la feuille de style externe pour Jenkins / navigateur
+    css_path = Path("reports/snyk/snyk-report.css")
+    css_path.write_text(SNYK_DASHBOARD_CSS, encoding="utf-8")
+
+    # Utilise la version dashboard qui référence la CSS externe
+    html = render_html_dashboard(data)
     out = Path("reports/snyk/snyk-report.html")
     out.write_text(html, encoding="utf-8")
     print(f"✅ Rapport HTML Snyk généré : {out}")
