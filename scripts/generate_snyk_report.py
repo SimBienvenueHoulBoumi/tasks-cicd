@@ -30,36 +30,44 @@ def load_snyk_json(path: Path):
 
 
 def render_html(data: dict) -> str:
+    """
+    Génère un rapport HTML Snyk avec Tailwind CSS (via CDN).
+    """
     vulns = data.get("vulnerabilities", [])
 
+    # Cas sans vulnérabilités : belle page "tout est vert"
     if not vulns:
         return """<!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Rapport Snyk</title>
-  <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-           background:#0f172a; color:#e5e7eb; margin:0; padding:2rem; }
-    .card { background:#020617; border-radius:0.75rem; padding:2rem; max-width:60rem; margin:0 auto;
-            box-shadow:0 25px 50px -12px rgba(15,23,42,0.8); }
-    .title { font-size:1.75rem; font-weight:700; color:#e5e7eb; margin-bottom:0.5rem; }
-    .subtitle { color:#9ca3af; margin-bottom:1.5rem; }
-    .badge-ok { display:inline-flex; align-items:center; gap:0.5rem; background:#022c22; color:#6ee7b7;
-                border:1px solid #10b981; border-radius:9999px; padding:0.35rem 0.9rem;
-                font-size:0.9rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="title">Rapport Snyk</div>
-    <div class="subtitle">Analyse de dépendances</div>
-    <div class="badge-ok">✔ Aucun problème trouvé par Snyk</div>
-  </div>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Rapport Snyk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center p-6">
+    <main class="max-w-2xl w-full bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl shadow-slate-900/80 p-8">
+      <header class="mb-6">
+        <p class="text-xs font-semibold tracking-[0.25em] text-emerald-400/80 uppercase">Snyk</p>
+        <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-50">Rapport Snyk</h1>
+        <p class="mt-1 text-sm text-slate-400">Analyse des dépendances de votre projet.</p>
+      </header>
+
+      <section class="mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+        <div class="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
+          <span class="text-lg">✔</span>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-emerald-300">Aucune vulnérabilité détectée</p>
+          <p class="text-xs text-emerald-200/80">
+            Snyk n’a remonté aucun problème sur ce scan. Continuez à surveiller vos dépendances à chaque build.
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
 </html>"""
 
-    # Compter par sévérité
+    # Compter les vulnérabilités par sévérité
     severities = ["critical", "high", "medium", "low"]
     counts = {s: 0 for s in severities}
     for v in vulns:
@@ -67,21 +75,21 @@ def render_html(data: dict) -> str:
         if sev in counts:
             counts[sev] += 1
 
-    def sev_color(sev: str) -> str:
+    def sev_badge_color(sev: str) -> str:
         return {
-            "critical": "#b91c1c",
-            "high": "#dc2626",
-            "medium": "#ea580c",
-            "low": "#ca8a04",
-        }.get(sev.lower(), "#6b7280")
+            "critical": "bg-rose-500/10 text-rose-300 border-rose-400/70",
+            "high": "bg-red-500/10 text-red-300 border-red-400/70",
+            "medium": "bg-amber-500/10 text-amber-300 border-amber-400/70",
+            "low": "bg-sky-500/10 text-sky-300 border-sky-400/70",
+        }.get(sev.lower(), "bg-slate-700/40 text-slate-200 border-slate-500/60")
 
-    def sev_bg(sev: str) -> str:
+    def sev_summary_color(sev: str) -> str:
         return {
-            "critical": "rgba(127,29,29,0.35)",
-            "high": "rgba(127,29,29,0.25)",
-            "medium": "rgba(146,64,14,0.22)",
-            "low": "rgba(133,77,14,0.18)",
-        }.get(sev.lower(), "rgba(31,41,55,0.4)")
+            "critical": "text-rose-400",
+            "high": "text-red-400",
+            "medium": "text-amber-400",
+            "low": "text-sky-300",
+        }.get(sev.lower(), "text-slate-300")
 
     rows = []
     for v in vulns:
@@ -94,215 +102,82 @@ def render_html(data: dict) -> str:
         url = v.get("url") or ""
 
         rows.append(f"""
-        <tr>
-          <td class="col-sev">
-            <span class="badge-sev badge-{sev}">
-              {escape(sev.upper())}
+        <article class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 sm:px-5 sm:py-4 flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div class="sm:w-32 flex-shrink-0">
+            <span class="inline-flex items-center justify-center rounded-full border px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] {sev_badge_color(sev)}">
+              {escape(sev or "unknown")}
             </span>
-          </td>
-          <td class="col-main">
-            <div class="vuln-title">{escape(title or id_)}</div>
-            <div class="vuln-meta">
-              <span class="pill">Package: <b>{escape(pkg)}</b>@{escape(str(version))}</span>
-              {"<span class='pill'>Chemin: " + escape(from_chain) + "</span>" if from_chain else ""}
+          </div>
+          <div class="flex-1 space-y-1">
+            <h3 class="text-sm font-semibold text-slate-50">
+              {escape(title or id_)}
+            </h3>
+            <p class="text-xs text-slate-400">
+              ID&nbsp;: <span class="font-mono text-slate-200">{escape(id_ or "N/A")}</span>
+            </p>
+            <div class="mt-1 flex flex-wrap gap-2 text-[0.7rem] text-slate-300">
+              <span class="inline-flex items-center rounded-full border border-slate-700/80 bg-slate-900/80 px-2.5 py-0.5">
+                <span class="mr-1 text-slate-400">Package</span>
+                <span class="font-mono">{escape(pkg)}@{escape(str(version))}</span>
+              </span>
+              {f"<span class='inline-flex items-center rounded-full border border-slate-700/80 bg-slate-900/80 px-2.5 py-0.5'><span class='mr-1 text-slate-400'>Chemin</span><span class='truncate max-w-xs'>{escape(from_chain)}</span></span>" if from_chain else ""}
             </div>
-            {"<div class='vuln-link'><a href='" + escape(url) + "' target='_blank' rel='noopener noreferrer'>Voir le détail sur Snyk ↗</a></div>" if url else ""}
-          </td>
-        </tr>
+            {f"<p class='mt-1 text-[0.7rem]'><a href='{escape(url)}' target='_blank' rel='noopener noreferrer' class='text-sky-300 hover:text-sky-200 underline underline-offset-4 decoration-sky-500/70'>Voir le détail sur Snyk ↗</a></p>" if url else ""}
+          </div>
+        </article>
         """)
 
     html = f"""<!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <title>Rapport Snyk</title>
-  <style>
-    /* Style utilitaires inspirés de Tailwind (simplifiés) */
-    :root {{
-      --bg-slate-950:#020617;
-      --bg-slate-900:#0f172a;
-      --bg-slate-800:#1e293b;
-      --border-slate-700:#334155;
-      --text-slate-50:#f9fafb;
-      --text-slate-300:#d1d5db;
-      --text-slate-400:#9ca3af;
-    }}
-    * {{ box-sizing:border-box; }}
-    body {{
-      font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background: radial-gradient(circle at top left, #1e293b 0, #020617 55%);
-      color: var(--text-slate-50);
-      margin:0;
-      padding:2.5rem 1.25rem;
-    }}
-    .container {{
-      max-width: 1120px;
-      margin:0 auto;
-    }}
-    .card {{
-      background: linear-gradient(145deg, rgba(15,23,42,0.96), rgba(15,23,42,0.98));
-      border-radius:1.25rem;
-      border:1px solid rgba(51,65,85,0.9);
-      box-shadow:0 25px 60px -20px rgba(15,23,42,0.9);
-      padding:2rem 2.5rem;
-    }}
-    .title {{
-      font-size:1.9rem;
-      font-weight:700;
-      letter-spacing:0.03em;
-      margin-bottom:0.35rem;
-    }}
-    .subtitle {{
-      color:var(--text-slate-400);
-      font-size:0.95rem;
-      margin-bottom:1.75rem;
-    }}
-    .grid-summary {{
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:0.75rem;
-      margin-bottom:1.75rem;
-    }}
-    .summary-card {{
-      padding:0.75rem 0.9rem;
-      border-radius:0.9rem;
-      background:rgba(15,23,42,0.85);
-      border:1px solid rgba(55,65,81,0.75);
-    }}
-    .summary-label {{
-      font-size:0.75rem;
-      text-transform:uppercase;
-      letter-spacing:0.08em;
-      color:var(--text-slate-400);
-      margin-bottom:0.25rem;
-    }}
-    .summary-value {{
-      font-size:1.3rem;
-      font-weight:700;
-    }}
-    .summary-critical .summary-value {{ color:#f97373; }}
-    .summary-high .summary-value {{ color:#fb7185; }}
-    .summary-medium .summary-value {{ color:#fb923c; }}
-    .summary-low .summary-value {{ color:#eab308; }}
-
-    table {{
-      width:100%;
-      border-collapse:separate;
-      border-spacing:0 0.5rem;
-    }}
-    thead th {{
-      text-align:left;
-      font-size:0.75rem;
-      text-transform:uppercase;
-      letter-spacing:0.08em;
-      color:var(--text-slate-400);
-      padding:0 0.5rem 0.35rem;
-    }}
-    tbody tr {{
-      background:linear-gradient(135deg, rgba(15,23,42,0.98), rgba(15,23,42,0.94));
-      border-radius:0.9rem;
-      overflow:hidden;
-      border:1px solid rgba(51,65,85,0.9);
-    }}
-    tbody tr td {{
-      padding:0.75rem 0.9rem;
-      vertical-align:top;
-    }}
-    .col-sev {{ width:110px; }}
-    .badge-sev {{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      min-width:90px;
-      padding:0.35rem 0.75rem;
-      border-radius:9999px;
-      font-size:0.75rem;
-      font-weight:700;
-      text-transform:uppercase;
-      letter-spacing:0.08em;
-      border:1px solid rgba(148,163,184,0.9);
-    }}
-    .badge-critical {{ background:{sev_bg("critical")}; color:{sev_color("critical")}; border-color:{sev_color("critical")}; }}
-    .badge-high {{ background:{sev_bg("high")}; color:{sev_color("high")}; border-color:{sev_color("high")}; }}
-    .badge-medium {{ background:{sev_bg("medium")}; color:{sev_color("medium")}; border-color:{sev_color("medium")}; }}
-    .badge-low {{ background:{sev_bg("low")}; color:{sev_color("low")}; border-color:{sev_color("low")}; }}
-
-    .vuln-title {{
-      font-size:0.95rem;
-      font-weight:600;
-      margin-bottom:0.35rem;
-    }}
-    .vuln-meta {{
-      display:flex;
-      flex-wrap:wrap;
-      gap:0.35rem;
-      margin-bottom:0.35rem;
-      font-size:0.8rem;
-      color:var(--text-slate-300);
-    }}
-    .pill {{
-      border-radius:9999px;
-      padding:0.15rem 0.7rem;
-      background:rgba(15,23,42,0.9);
-      border:1px solid rgba(55,65,81,0.9);
-    }}
-    .vuln-link a {{
-      font-size:0.8rem;
-      color:#38bdf8;
-      text-decoration:none;
-    }}
-    .vuln-link a:hover {{
-      text-decoration:underline;
-    }}
-
-    @media (max-width: 768px) {{
-      .card {{ padding:1.5rem 1.25rem; }}
-      .grid-summary {{ grid-template-columns:repeat(2,minmax(0,1fr)); }}
-      .col-sev {{ width:80px; }}
-    }}
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="card">
-      <div class="title">Rapport Snyk</div>
-      <div class="subtitle">Analyse des vulnérabilités dans les dépendances du projet</div>
-
-      <div class="grid-summary">
-        <div class="summary-card summary-critical">
-          <div class="summary-label">Critiques</div>
-          <div class="summary-value">{counts["critical"]}</div>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Rapport Snyk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-50 p-4 sm:p-6">
+    <main class="mx-auto max-w-5xl space-y-5">
+      <header class="rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-5 shadow-2xl shadow-slate-950/70">
+        <p class="text-xs font-semibold tracking-[0.25em] text-violet-400/80 uppercase">Snyk</p>
+        <div class="mt-1 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-50">Rapport Snyk</h1>
+            <p class="text-xs sm:text-sm text-slate-400">
+              Analyse des vulnérabilités dans les dépendances du projet.
+            </p>
+          </div>
+          <div class="mt-2 flex gap-2 text-[0.7rem] sm:text-xs text-slate-400">
+            <span class="inline-flex items-center rounded-full border border-slate-700/80 bg-slate-900/90 px-3 py-1">
+              Total&nbsp;: <span class="ml-1 font-semibold text-slate-100">{len(vulns)}</span>
+            </span>
+          </div>
         </div>
-        <div class="summary-card summary-high">
-          <div class="summary-label">Hautes</div>
-          <div class="summary-value">{counts["high"]}</div>
-        </div>
-        <div class="summary-card summary-medium">
-          <div class="summary-label">Moyennes</div>
-          <div class="summary-value">{counts["medium"]}</div>
-        </div>
-        <div class="summary-card summary-low">
-          <div class="summary-label">Basses</div>
-          <div class="summary-value">{counts["low"]}</div>
-        </div>
-      </div>
+      </header>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Gravité</th>
-            <th>Vulnérabilité</th>
-          </tr>
-        </thead>
-        <tbody>
-          {''.join(rows)}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</body>
+      <section class="grid gap-3 sm:grid-cols-4">
+        <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+          <p class="text-[0.7rem] uppercase tracking-[0.18em] text-slate-400">Critiques</p>
+          <p class="mt-1 text-xl font-semibold {sev_summary_color("critical")}">{counts["critical"]}</p>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+          <p class="text-[0.7rem] uppercase tracking-[0.18em] text-slate-400">Hautes</p>
+          <p class="mt-1 text-xl font-semibold {sev_summary_color("high")}">{counts["high"]}</p>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+          <p class="text-[0.7rem] uppercase tracking-[0.18em] text-slate-400">Moyennes</p>
+          <p class="mt-1 text-xl font-semibold {sev_summary_color("medium")}">{counts["medium"]}</p>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+          <p class="text-[0.7rem] uppercase tracking-[0.18em] text-slate-400">Basses</p>
+          <p class="mt-1 text-xl font-semibold {sev_summary_color("low")}">{counts["low"]}</p>
+        </div>
+      </section>
+
+      <section class="space-y-3">
+        {''.join(rows)}
+      </section>
+    </main>
+  </body>
 </html>"""
-
     return html
 
 
