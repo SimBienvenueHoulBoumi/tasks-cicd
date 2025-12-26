@@ -1,13 +1,16 @@
 package simple.tasks.controllers;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import simple.tasks.dto.TaskResource;
 import simple.tasks.dto.TasksDto;
 import simple.tasks.models.Tasks;
@@ -24,26 +27,33 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Ces tests couvrent les principaux endpoints REST pour améliorer la
  * couverture de code et valider le mapping JSON de base.
  */
-@WebMvcTest(controllers = TasksControllers.class)
+@ExtendWith(MockitoExtension.class)
 class TasksControllersTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @InjectMocks
+    private TasksControllers controller;
+
+    @Mock
     private TasksCreateTask createTasksService;
 
-    @MockBean
+    @Mock
     private TasksGetTaskById tasksGetTaskByIdService;
 
-    @MockBean
+    @Mock
     private TasksGetAllTasks tasksGetAllTasks;
 
-    @MockBean
+    @Mock
     private UpdateTask updateTasksService;
 
-    @MockBean
+    @Mock
     private DeleteTask deleteTasksService;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+    }
 
     @Test
     @DisplayName("GET /tasks doit retourner la liste des tâches avec un statut 200")
