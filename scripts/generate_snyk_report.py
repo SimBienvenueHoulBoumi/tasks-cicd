@@ -662,7 +662,6 @@ def render_html_dashboard(data: dict) -> str:
             f"<span class='chip'><span class='chip-label'>Package</span><span class='chip-value'>{escape(pkg)}@{escape(str(version))}</span></span>"
             f"{f'<span class=\"chip\"><span class=\"chip-label\">Chemin</span><span class=\"chip-value\">{escape(from_chain)}</span></span>' if from_chain else ''}"
             f"</div>"
-            f"{f'<p class=\"v-link\"><a href=\"{escape(url)}\" target=\"_blank\" rel=\"noopener noreferrer\">Voir le détail sur Snyk ↗</a></p>' if url else ''}"
             f"</td></tr>"
         )
 

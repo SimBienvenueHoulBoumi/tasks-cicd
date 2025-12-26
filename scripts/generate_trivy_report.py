@@ -45,10 +45,7 @@ def render_html(vulns):
                 f"<span class='chip'><span class='chip-label'>CVSS</span><span class='chip-value'>{escape(cvss)}</span></span>"
             )
         rows[-1] += "</div>"
-        if url:
-            rows[-1] += (
-                f"<p class='v-link'><a href='{escape(url)}' target='_blank' rel='noopener noreferrer'>Voir le détail ↗</a></p>"
-            )
+        # Lien “voir détail” retiré pour un rendu plus épuré
         rows[-1] += "</td></tr>"
 
     body_rows = "".join(rows) if rows else (
@@ -281,7 +278,7 @@ def main():
             return
     except json.JSONDecodeError as e:
         print(f"❌ JSON Trivy invalide: {e}")
-        return
+                return
     except Exception as e:
         print(f"❌ Erreur de lecture du fichier: {e}")
         return
