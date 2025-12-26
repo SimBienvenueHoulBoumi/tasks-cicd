@@ -181,6 +181,273 @@ def render_html(data: dict) -> str:
     return html
 
 
+def render_html_pure(data: dict) -> str:
+    """
+    Variante du rapport Snyk avec du CSS pur (sans Tailwind) et un rendu clair type dashboard.
+    """
+    vulns = data.get("vulnerabilities", [])
+
+    # Compter par sévérité
+    severities = ["critical", "high", "medium", "low"]
+    counts = {s: 0 for s in severities}
+    for v in vulns:
+        sev = (v.get("severity") or "").lower()
+        if sev in counts:
+            counts[sev] += 1
+
+    # Lignes de tableau
+    rows = []
+    for v in vulns:
+        sev = (v.get("severity") or "").upper()
+        pkg = v.get("packageName") or v.get("moduleName") or "n/a"
+        version = v.get("version") or "?"
+        title = v.get("title") or v.get("name") or ""
+        id_ = v.get("id") or ""
+        url = v.get("url") or ""
+
+        rows.append(
+            f"<tr>"
+            f"<td class='sev sev-{escape(sev.lower())}'>{escape(sev)}</td>"
+            f"<td class='col-main'>"
+            f"<div class='v-title'>{escape(title or id_)}</div>"
+            f"<div class='v-meta'>"
+            f"<span class='chip'><span class='chip-label'>ID</span><span class='chip-value'>{escape(id_ or 'N/A')}</span></span>"
+            f"<span class='chip'><span class='chip-label'>Package</span><span class='chip-value'>{escape(pkg)}@{escape(str(version))}</span></span>"
+            f"</div>"
+        )
+        if url:
+            rows[-1] += (
+                f"<div class='v-link'><a href='{escape(url)}' target='_blank' rel='noopener noreferrer'>Voir le détail sur Snyk ↗</a></div>"
+            )
+        rows[-1] += "</td></tr>"
+
+    body_rows = "".join(rows) if rows else (
+        "<tr><td colspan='2' class='no-data'>Aucune vulnérabilité détectée.</td></tr>"
+    )
+
+    html = f"""<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Rapport Snyk</title>
+    <style>
+      * {{ box-sizing: border-box; }}
+      body {{
+        margin: 0;
+        min-height: 100vh;
+        padding: 24px 16px 32px;
+        background: #f3f4f6;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #111827;
+      }}
+      .page {{
+        max-width: 1120px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: minmax(0,1.4fr) minmax(0,1fr);
+        gap: 16px;
+      }}
+      .card {{
+        border-radius: 24px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 22px 60px rgba(148,163,184,0.25);
+      }}
+      .card-main {{
+        padding: 22px 24px 18px;
+      }}
+      .card-side {{
+        padding: 18px 20px;
+      }}
+      .eyebrow {{
+        margin: 0 0 4px;
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #4f46e5;
+      }}
+      h1 {{
+        margin: 0;
+        font-size: 22px;
+        letter-spacing: 0.03em;
+      }}
+      .subtitle {{
+        margin-top: 4px;
+        font-size: 13px;
+        color: #6b7280;
+      }}
+      .summary-grid {{
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0,1fr));
+        gap: 10px;
+      }}
+      .summary-card {{
+        border-radius: 16px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        padding: 10px 12px;
+      }}
+      .summary-label {{
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: #9ca3af;
+        margin-bottom: 2px;
+      }}
+      .summary-value {{
+        font-size: 18px;
+        font-weight: 700;
+      }}
+      .crit {{ color: #b91c1c; }}
+      .high {{ color: #dc2626; }}
+      .med {{ color: #d97706; }}
+      .low {{ color: #0369a1; }}
+
+      table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 18px;
+      }}
+      thead th {{
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: #9ca3af;
+        padding: 0 8px 4px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+      }}
+      tbody tr + tr td {{
+        border-top: 1px solid #f3f4f6;
+      }}
+      td {{
+        padding: 8px;
+        vertical-align: top;
+        font-size: 13px;
+      }}
+      .sev {{
+        width: 96px;
+        font-size: 11px;
+        font-weight: 600;
+        text-align: center;
+        border-radius: 999px;
+        padding: 4px 10px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+      }}
+      .sev-critical {{ background:#fef2f2; color:#b91c1c; border-color:#fecaca; }}
+      .sev-high {{ background:#fef2f2; color:#dc2626; border-color:#fecaca; }}
+      .sev-medium {{ background:#fffbeb; color:#d97706; border-color:#fde68a; }}
+      .sev-low {{ background:#eff6ff; color:#0369a1; border-color:#bfdbfe; }}
+      .col-main .v-title {{
+        margin: 0 0 2px;
+        font-weight: 600;
+      }}
+      .v-id {{
+        margin: 0;
+        font-size: 12px;
+        color: #6b7280;
+      }}
+      .v-id span {{
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        color: #111827;
+      }}
+      .v-meta {{
+        margin-top: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }}
+      .chip {{
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        padding: 2px 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }}
+      .chip-label {{
+        font-size: 11px;
+        color: #6b7280;
+      }}
+      .chip-value {{
+        font-size: 11px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      }}
+      .v-link {{
+        margin-top: 6px;
+        font-size: 11px;
+      }}
+      .v-link a {{
+        color: #2563eb;
+        text-decoration: none;
+      }}
+      .v-link a:hover {{
+        text-decoration: underline;
+      }}
+      .no-data {{
+        text-align: center;
+        font-size: 13px;
+        color: #6b7280;
+        padding: 16px 0;
+      }}
+      @media (max-width: 900px) {{
+        .page {{ grid-template-columns: minmax(0,1fr); }}
+      }}
+      @media (max-width: 640px) {{
+        .header {{ padding: 18px; }}
+      }}
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="card card-main">
+        <header>
+          <p class="eyebrow">Snyk</p>
+          <h1>Rapport Snyk</h1>
+          <p class="subtitle">Analyse des vulnérabilités dans les dépendances du projet.</p>
+          <div class="summary" style="margin-top:10px;font-size:12px;color:#4b5563;">
+            <span style="border-radius:999px;border:1px solid #e5e7eb;background:#f9fafb;padding:2px 8px;">
+              Total : <strong>{len(vulns)}</strong>
+            </span>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-card summary-critical">
+              <div class="summary-label">Critiques</div>
+              <div class="summary-value crit">{counts["critical"]}</div>
+            </div>
+            <div class="summary-card summary-high">
+              <div class="summary-label">Hautes</div>
+              <div class="summary-value high">{counts["high"]}</div>
+            </div>
+            <div class="summary-card summary-medium">
+              <div class="summary-label">Moyennes</div>
+              <div class="summary-value med">{counts["medium"]}</div>
+            </div>
+            <div class="summary-card summary-low">
+              <div class="summary-label">Basses</div>
+              <div class="summary-value low">{counts["low"]}</div>
+            </div>
+          </div>
+        </header>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:110px;">Gravité</th>
+              <th>Vulnérabilité</th>
+            </tr>
+          </thead>
+          <tbody>
+{body_rows}
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </body>
+</html>"""
+    return html
 def main():
     json_path = Path("reports/snyk/snyk-report.json")
     data = load_snyk_json(json_path)

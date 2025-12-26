@@ -5,7 +5,7 @@ from pathlib import Path
 
 def render_html(vulns):
     """
-    Génère un rapport HTML Trivy avec Tailwind CSS (via CDN).
+    Génère un rapport HTML Trivy avec du CSS pur (sans Tailwind).
     """
     # Compter par sévérité
     severities = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
@@ -15,54 +15,7 @@ def render_html(vulns):
         if sev in counts:
             counts[sev] += 1
 
-    def sev_badge_color(sev: str) -> str:
-        return {
-            "CRITICAL": "bg-rose-500/10 text-rose-300 border-rose-400/70",
-            "HIGH": "bg-red-500/10 text-red-300 border-red-400/70",
-            "MEDIUM": "bg-amber-500/10 text-amber-300 border-amber-400/70",
-            "LOW": "bg-sky-500/10 text-sky-300 border-sky-400/70",
-        }.get(sev.upper(), "bg-slate-700/40 text-slate-200 border-slate-500/60")
-
-    def sev_summary_color(sev: str) -> str:
-        return {
-            "CRITICAL": "text-rose-400",
-            "HIGH": "text-red-400",
-            "MEDIUM": "text-amber-400",
-            "LOW": "text-sky-300",
-        }.get(sev.upper(), "text-slate-300")
-
-    # Cas sans vulnérabilités
-    if not vulns:
-        return """<!DOCTYPE html>
-<html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Rapport Trivy</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body class="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center p-6">
-    <main class="max-w-2xl w-full bg-slate-900/80 border border-slate-800 rounded-2xl shadow-2xl shadow-slate-900/80 p-8">
-      <header class="mb-6">
-        <p class="text-xs font-semibold tracking-[0.25em] text-sky-400/80 uppercase">Trivy</p>
-        <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-50">Rapport Trivy</h1>
-        <p class="mt-1 text-sm text-slate-400">Analyse de l’image container (CRITICAL / HIGH).</p>
-      </header>
-
-      <section class="mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
-        <div class="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
-          <span class="text-lg">✔</span>
-        </div>
-        <div>
-          <p class="text-sm font-semibold text-emerald-300">Aucune vulnérabilité critique ou haute détectée</p>
-          <p class="text-xs text-emerald-200/80">
-            Trivy n’a remonté aucun problème sur ce scan. Pensez à relancer l’analyse après chaque mise à jour d’image.
-          </p>
-        </div>
-      </section>
-    </main>
-  </body>
-</html>"""
-
+    # Construire les lignes
     rows = []
     for v in vulns:
         sev = (v.get("Severity") or "").upper()
@@ -77,83 +30,231 @@ def render_html(vulns):
             cvss = str(metrics.get("V3Score") or metrics.get("V2Score") or "")
         url = v.get("PrimaryURL") or ""
 
-        rows.append(f"""
-        <article class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 sm:px-5 sm:py-4 flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <div class="sm:w-32 flex-shrink-0">
-            <span class="inline-flex items-center justify-center rounded-full border px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] {sev_badge_color(sev)}>
-              {escape(sev or "UNKNOWN")}
-            </span>
-          </div>
-          <div class="flex-1 space-y-1">
-            <h3 class="text-sm font-semibold text-slate-50">
-              {escape(title)}
-            </h3>
-            <p class="text-xs text-slate-400">
-              ID&nbsp;: <span class="font-mono text-slate-200">{escape(vuln_id)}</span>
-            </p>
-            <div class="mt-1 flex flex-wrap gap-2 text-[0.7rem] text-slate-300">
-              <span class="inline-flex items-center rounded-full border border-slate-700/80 bg-slate-900/80 px-2.5 py-0.5">
-                <span class="mr-1 text-slate-400">Package</span>
-                <span class="font-mono">{escape(pkg)}@{escape(str(installed))}</span>
-              </span>
-              <span class="inline-flex items-center rounded-full border border-slate-700/80 bg-slate-900/80 px-2.5 py-0.5">
-                <span class="mr-1 text-slate-400">Fix</span>
-                <span class="font-mono">{escape(str(fixed))}</span>
-              </span>
-              {f"<span class='inline-flex items-center rounded-full border border-slate-700/80 bg-slate-900/80 px-2.5 py-0.5'><span class='mr-1 text-slate-400'>CVSS</span><span class='font-mono'>{escape(cvss)}</span></span>" if cvss else ""}
-            </div>
-            {f"<p class='mt-1 text-[0.7rem]'><a href='{escape(url)}' target='_blank' rel='noopener noreferrer' class='text-sky-300 hover:text-sky-200 underline underline-offset-4 decoration-sky-500/70'>Voir le détail ↗</a></p>" if url else ""}
-          </div>
-        </article>
-        """)
+        rows.append(
+            f"<tr>"
+            f"<td class='sev sev-{escape(sev.lower())}'>{escape(sev or 'UNKNOWN')}</td>"
+            f"<td class='col-main'>"
+            f"<div class='v-title'>{escape(title)}</div>"
+            f"<p class='v-id'>ID : <span>{escape(vuln_id)}</span></p>"
+            f"<div class='v-meta'>"
+            f"<span class='chip'><span class='chip-label'>Package</span><span class='chip-value'>{escape(pkg)}@{escape(str(installed))}</span></span>"
+            f"<span class='chip'><span class='chip-label'>Fix</span><span class='chip-value'>{escape(str(fixed))}</span></span>"
+        )
+        if cvss:
+            rows[-1] += (
+                f"<span class='chip'><span class='chip-label'>CVSS</span><span class='chip-value'>{escape(cvss)}</span></span>"
+            )
+        rows[-1] += "</div>"
+        if url:
+            rows[-1] += (
+                f"<p class='v-link'><a href='{escape(url)}' target='_blank' rel='noopener noreferrer'>Voir le détail ↗</a></p>"
+            )
+        rows[-1] += "</td></tr>"
+
+    body_rows = "".join(rows) if rows else (
+        "<tr><td colspan='2' class='no-data'>Aucune vulnérabilité détectée.</td></tr>"
+    )
 
     html = f"""<!DOCTYPE html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <title>Rapport Trivy</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      * {{ box-sizing: border-box; }}
+      body {{
+        margin: 0;
+        min-height: 100vh;
+        padding: 24px 16px 32px;
+        background: #f9fafb;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #111827;
+      }}
+      .page {{
+        max-width: 1120px;
+        margin: 0 auto;
+      }}
+      .header {{
+        border-radius: 24px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        padding: 22px 24px 18px;
+        box-shadow: 0 22px 50px rgba(148,163,184,0.25);
+      }}
+      .eyebrow {{
+        margin: 0 0 4px;
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #0369a1;
+      }}
+      h1 {{
+        margin: 0;
+        font-size: 22px;
+        letter-spacing: 0.03em;
+      }}
+      .subtitle {{
+        margin-top: 4px;
+        font-size: 13px;
+        color: #6b7280;
+      }}
+      .summary-grid {{
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0,1fr));
+        gap: 10px;
+      }}
+      .summary-card {{
+        border-radius: 16px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        padding: 10px 12px;
+      }}
+      .summary-label {{
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: #9ca3af;
+        margin-bottom: 2px;
+      }}
+      .summary-value {{
+        font-size: 18px;
+        font-weight: 700;
+      }}
+      .crit {{ color: #b91c1c; }}
+      .high {{ color: #dc2626; }}
+      .med {{ color: #d97706; }}
+      .low {{ color: #0369a1; }}
+
+      table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 18px;
+      }}
+      thead th {{
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: #9ca3af;
+        padding: 0 8px 4px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+      }}
+      tbody tr + tr td {{
+        border-top: 1px solid #f3f4f6;
+      }}
+      td {{
+        padding: 8px;
+        vertical-align: top;
+        font-size: 13px;
+      }}
+      .sev {{
+        width: 96px;
+        font-size: 11px;
+        font-weight: 600;
+        text-align: center;
+        border-radius: 999px;
+        padding: 4px 10px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+      }}
+      .sev-critical {{ background:#fef2f2; color:#b91c1c; border-color:#fecaca; }}
+      .sev-high {{ background:#fef2f2; color:#dc2626; border-color:#fecaca; }}
+      .sev-medium {{ background:#fffbeb; color:#d97706; border-color:#fde68a; }}
+      .sev-low {{ background:#eff6ff; color:#0369a1; border-color:#bfdbfe; }}
+      .v-title {{
+        margin: 0 0 2px;
+        font-size: 14px;
+        font-weight: 600;
+      }}
+      .v-id {{
+        margin: 0;
+        font-size: 12px;
+        color: #6b7280;
+      }}
+      .v-id span {{
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        color: #111827;
+      }}
+      .v-meta {{
+        margin-top: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        font-size: 11px;
+      }}
+      .chip {{
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        padding: 2px 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }}
+      .chip-label {{
+        color: #6b7280;
+      }}
+      .chip-value {{
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      }}
+      .v-link {{
+        margin-top: 6px;
+        font-size: 11px;
+      }}
+      .v-link a {{
+        color: #2563eb;
+        text-decoration: none;
+      }}
+      .v-link a:hover {{
+        text-decoration: underline;
+      }}
+      .no-data {{
+        text-align: center;
+        font-size: 13px;
+        color: #6b7280;
+        padding: 16px 0;
+      }}
+      @media (max-width: 768px) {{
+        .summary-grid {{ grid-template-columns: repeat(2, minmax(0,1fr)); }}
+      }}
+    </style>
   </head>
-  <body class="min-h-screen bg-slate-950 text-slate-50 p-4 sm:p-6">
-    <main class="mx-auto max-w-5xl space-y-5">
-      <header class="rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-5 shadow-2xl shadow-slate-950/70">
-        <p class="text-xs font-semibold tracking-[0.25em] text-sky-400/80 uppercase">Trivy</p>
-        <div class="mt-1 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 class="text-2xl font-bold tracking-tight text-slate-50">Rapport Trivy</h1>
-            <p class="text-xs sm:text-sm text-slate-400">
-              Vulnérabilités détectées sur l'image container (CRITICAL / HIGH / MEDIUM / LOW).
-            </p>
+  <body>
+    <main class="page">
+      <section class="header">
+        <p class="eyebrow">Trivy</p>
+        <h1>Rapport Trivy</h1>
+        <p class="subtitle">Vulnérabilités détectées sur l'image container.</p>
+        <div class="summary-grid">
+          <div class="summary-card summary-critical">
+            <div class="summary-label">Critiques</div>
+            <div class="summary-value crit">{counts["CRITICAL"]}</div>
           </div>
-          <div class="mt-2 flex gap-2 text-[0.7rem] sm:text-xs text-slate-400">
-            <span class="inline-flex items-center rounded-full border border-slate-700/80 bg-slate-900/90 px-3 py-1">
-              Total&nbsp;: <span class="ml-1 font-semibold text-slate-100">{len(vulns)}</span>
-            </span>
+          <div class="summary-card summary-high">
+            <div class="summary-label">Hautes</div>
+            <div class="summary-value high">{counts["HIGH"]}</div>
+          </div>
+          <div class="summary-card summary-medium">
+            <div class="summary-label">Moyennes</div>
+            <div class="summary-value med">{counts["MEDIUM"]}</div>
+          </div>
+          <div class="summary-card summary-low">
+            <div class="summary-label">Basses</div>
+            <div class="summary-value low">{counts["LOW"]}</div>
           </div>
         </div>
-      </header>
-
-      <section class="grid gap-3 sm:grid-cols-4">
-        <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-          <p class="text-[0.7rem] uppercase tracking-[0.18em] text-slate-400">Critiques</p>
-          <p class="mt-1 text-xl font-semibold {sev_summary_color("CRITICAL")}">{counts["CRITICAL"]}</p>
-        </div>
-        <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-          <p class="text-[0.7rem] uppercase tracking-[0.18em] text-slate-400">Hautes</p>
-          <p class="mt-1 text-xl font-semibold {sev_summary_color("HIGH")}">{counts["HIGH"]}</p>
-        </div>
-        <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-          <p class="text-[0.7rem] uppercase tracking-[0.18em] text-slate-400">Moyennes</p>
-          <p class="mt-1 text-xl font-semibold {sev_summary_color("MEDIUM")}">{counts["MEDIUM"]}</p>
-        </div>
-        <div class="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-          <p class="text-[0.7rem] uppercase tracking-[0.18em] text-slate-400">Basses</p>
-          <p class="mt-1 text-xl font-semibold {sev_summary_color("LOW")}">{counts["LOW"]}</p>
-        </div>
-      </section>
-
-      <section class="space-y-3">
-        {''.join(rows)}
+        <table>
+          <thead>
+            <tr>
+              <th style="width:110px;">Gravité</th>
+              <th>Détail</th>
+            </tr>
+          </thead>
+          <tbody>
+{body_rows}
+          </tbody>
+        </table>
       </section>
     </main>
   </body>
