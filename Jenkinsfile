@@ -221,7 +221,7 @@ pipeline {
                     mkdir -p reports/dependency-check
 
                     echo "[OWASP] Lancement du plugin Maven dependency-check (HTML + JSON)..."
-                    ./mvnw org.owasp:dependency-check-maven:check -DskipTests -Dformat=HTML,JSON
+                    ./mvnw org.owasp:dependency-check-maven:check -DskipTests -Dformat=HTML,JSON -Danalyzer.nvd.updateOnce=true
 
                     # Copie des rapports bruts générés par le plugin
                     if [ -f target/dependency-check-report.json ]; then
