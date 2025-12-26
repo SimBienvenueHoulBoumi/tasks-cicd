@@ -175,11 +175,11 @@ pipeline {
 
                     env.IMAGE_TAG_BUILD   = "${APP_NAME}:${BUILD_NUMBER}"
                     env.IMAGE_TAG_SHA     = "${APP_NAME}:${commit}"
-                    env.IMAGE_TAG_VERSION = "${APP_NAME}:${PROJECT_VERSION}"
+                    env.IMAGE_TAG_VERSION = "${APP_NAME}:${env.PROJECT_VERSION}"
 
                     env.IMAGE_NAME_BUILD   = "${IMAGE_REPO}:${BUILD_NUMBER}"
                     env.IMAGE_NAME_SHA     = "${IMAGE_REPO}:${commit}"
-                    env.IMAGE_NAME_VERSION = "${IMAGE_REPO}:${PROJECT_VERSION}"
+                    env.IMAGE_NAME_VERSION = "${IMAGE_REPO}:${env.PROJECT_VERSION}"
 
                     // Build sans BuildKit (buildx non installé sur l'agent)
                     sh """
