@@ -27,6 +27,14 @@ public record TaskResource(
 ) {
 
     /**
+     * Constructeur canonique avec copie défensive de la Map pour éviter
+     * d'exposer une représentation interne mutable (EI_EXPOSE_REP2).
+     */
+    public TaskResource {
+        links = (links == null) ? null : Map.copyOf(links);
+    }
+
+    /**
      * Constructeur de confort depuis l'entité de domaine {@link Tasks}.
      */
     public TaskResource(Tasks task) {
