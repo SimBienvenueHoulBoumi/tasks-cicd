@@ -369,14 +369,15 @@ def main():
 
     # Écrit la feuille de style externe pour Jenkins / navigateur
     css_path = Path("reports/trivy/trivy-report.css")
+    css_path.parent.mkdir(parents=True, exist_ok=True)
     css_path.write_text(TRIVY_DASHBOARD_CSS, encoding="utf-8")
 
     all_vulns = []
     if data:
-    for target in data.get("Results", []):
+      for target in data.get("Results", []):
         for vuln in target.get("Vulnerabilities", []):
-                if vuln.get("Severity") in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
-                all_vulns.append(vuln)
+            if vuln.get("Severity") in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+              all_vulns.append(vuln)
 
     html = render_html(all_vulns)
     output_path = Path("reports/trivy/trivy-report.html")
