@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tasks-ingress
+  annotations:
+    # Exemple pour nginx-ingress. À adapter selon ton ingress controller.
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: tasks.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tasks-service
+                port:
+                  number: 5300

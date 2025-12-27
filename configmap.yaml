@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tasks-config
+data:
+  # Exemple de configuration pour ton application Spring Boot.
+  # Ajoute ici tes variables d'environnement (elles seront exposées en env vars).
+  SPRING_PROFILES_ACTIVE: "prod"

@@ -63,6 +63,11 @@ pipeline {
         FAIL_ON_SNYK_VULNS   = "false"   // si Snyk trouve des vulnérabilités -> échec (sinon warning)
         FAIL_ON_TRIVY_VULNS  = "false"   // idem pour Trivy
         RUN_SMOKE_TESTS      = "false"   // activer un stage de smoke tests HTTP (si déploiement derrière)
+
+        // --- Argo CD / CD GitOps ---
+        // Active ou non l'application de l'Application Argo CD (deploy.yaml)
+        ARGOCD_ENABLED       = "true"
+        ARGOCD_NAMESPACE     = "argocd"
     }
 
     stages {
@@ -283,6 +288,20 @@ pipeline {
             }
         }
 
+        stage('🚀 Argo CD Apply (deploy.yaml)') {
+            when {
+                allOf {
+                    expression { env.ARGOCD_ENABLED == "true" }
+                    branch 'main'
+                }
+            }
+            steps {
+                sh '''
+                    echo "[ARGOCD] Application de l'Application Argo CD depuis deploy.yaml..."
+                    kubectl apply -f springboot/tasks/deploy.yaml -n ${ARGOCD_NAMESPACE}
+                '''
+            }
+        }
 
         stage('🧹 Cleanup') {
             steps {
