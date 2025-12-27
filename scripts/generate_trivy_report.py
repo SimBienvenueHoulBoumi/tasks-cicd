@@ -41,7 +41,7 @@ def render_html(vulns):
         if sev in counts:
             counts[sev] += 1
 
-    # Construire les lignes
+    # Construire les lignes (une par vulnérabilité)
     rows = []
     for v in vulns:
         sev = (v.get("Severity") or "").upper()
@@ -50,29 +50,79 @@ def render_html(vulns):
         pkg = v.get("PkgName", "N/A")
         installed = v.get("InstalledVersion", "?")
         fixed = v.get("FixedVersion", "N/A")
-        cvss = ""
+        # CVSS (score + éventuel vecteur)
+        cvss_score = ""
+        cvss_vector = ""
         if v.get("CVSS"):
             metrics = next(iter(v["CVSS"].values()), {})
-            cvss = str(metrics.get("V3Score") or metrics.get("V2Score") or "")
-        url = v.get("PrimaryURL") or ""
+            cvss_score = str(metrics.get("V3Score") or metrics.get("V2Score") or "")
+            cvss_vector = str(
+                metrics.get("V3Vector")
+                or metrics.get("V2Vector")
+                or metrics.get("Vector")
+                or ""
+            )
 
-        rows.append(
-            f"<tr>"
+        # CWE (liste ou simple identifiant)
+        cwes = v.get("CweIDs") or v.get("CweID") or []
+        if isinstance(cwes, str):
+            cwes = [cwes]
+        cwe_label = ", ".join(str(c) for c in cwes) if cwes else ""
+
+        # Description courte (tronquée pour l'UI)
+        raw_desc = (v.get("Description") or "").strip()
+        if raw_desc:
+            short = raw_desc if len(raw_desc) <= 400 else raw_desc[:400] + "..."
+            desc_html = escape(short)
+        else:
+            desc_html = "Pas de description détaillée fournie."
+
+        primary_url = v.get("PrimaryURL") or ""
+
+        row = (
+            f"<tr class='row-{escape(sev.lower())}'>"
             f"<td class='sev sev-{escape(sev.lower())}'>{escape(sev or 'UNKNOWN')}</td>"
             f"<td class='col-main'>"
             f"<div class='v-title'>{escape(title)}</div>"
             f"<p class='v-id'>ID : <span>{escape(vuln_id)}</span></p>"
             f"<div class='v-meta'>"
-            f"<span class='chip'><span class='chip-label'>Package</span><span class='chip-value'>{escape(pkg)}@{escape(str(installed))}</span></span>"
-            f"<span class='chip'><span class='chip-label'>Fix</span><span class='chip-value'>{escape(str(fixed))}</span></span>"
+            f"<span class='chip'><span class='chip-label'>Package</span>"
+            f"<span class='chip-value'>{escape(pkg)}@{escape(str(installed))}</span></span>"
+            f"<span class='chip'><span class='chip-label'>Fix</span>"
+            f"<span class='chip-value'>{escape(str(fixed))}</span></span>"
         )
-        if cvss:
-            rows[-1] += (
-                f"<span class='chip'><span class='chip-label'>CVSS</span><span class='chip-value'>{escape(cvss)}</span></span>"
+        if cvss_score:
+            row += (
+                f"<span class='chip'><span class='chip-label'>CVSS</span>"
+                f"<span class='chip-value'>{escape(cvss_score)}</span></span>"
             )
-        rows[-1] += "</div>"
-        # Lien “voir détail” retiré pour un rendu plus épuré
-        rows[-1] += "</td></tr>"
+        if cvss_vector:
+            row += (
+                f"<span class='chip'><span class='chip-label'>Vecteur</span>"
+                f"<span class='chip-value'>{escape(cvss_vector)}</span></span>"
+            )
+        if cwe_label:
+            row += (
+                f"<span class='chip'><span class='chip-label'>CWE</span>"
+                f"<span class='chip-value'>{escape(cwe_label)}</span></span>"
+            )
+
+        row += "</div>"  # fin v-meta
+
+        # Description
+        row += f"<p class='v-desc'>{desc_html}</p>"
+
+        # URL principale (source) – affichée de façon discrète
+        if primary_url:
+            safe_url = escape(primary_url)
+            row += (
+                f"<p class='v-source'>Source : "
+                f"<a href=\"{safe_url}\" target=\"_blank\" rel=\"noreferrer noopener\">{safe_url}</a>"
+                f"</p>"
+            )
+
+        row += "</td></tr>"
+        rows.append(row)
 
     body_rows = "".join(rows) if rows else (
         "<tr><td colspan='2' class='no-data'>Aucune vulnérabilité détectée.</td></tr>"
@@ -245,6 +295,23 @@ td {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   color: #111827;
 }
+.v-desc {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #374151;
+}
+.v-source {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6b7280;
+}
+.v-source a {
+  color: #2563eb;
+  text-decoration: none;
+}
+.v-source a:hover {
+  text-decoration: underline;
+}
 .v-meta {
   margin-top: 6px;
   display: flex;
@@ -284,6 +351,12 @@ td {
   color: #6b7280;
   padding: 16px 0;
 }
+.row-critical td {
+  background: #fef2f2;
+}
+.row-high td {
+  background: #fff7ed;
+}
 @media (max-width: 768px) {
   .summary-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
 }
@@ -300,10 +373,10 @@ def main():
 
     all_vulns = []
     if data:
-        for target in data.get("Results", []):
-            for vuln in target.get("Vulnerabilities", []):
+    for target in data.get("Results", []):
+        for vuln in target.get("Vulnerabilities", []):
                 if vuln.get("Severity") in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
-                    all_vulns.append(vuln)
+                all_vulns.append(vuln)
 
     html = render_html(all_vulns)
     output_path = Path("reports/trivy/trivy-report.html")
