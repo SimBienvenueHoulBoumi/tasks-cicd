@@ -290,10 +290,7 @@ pipeline {
 
         stage('🚀 Argo CD Apply (deploy.yaml)') {
             when {
-                allOf {
-                    expression { env.ARGOCD_ENABLED == "true" }
-                    branch 'main'
-                }
+                expression { env.ARGOCD_ENABLED == "true" }
             }
             steps {
                 sh '''
