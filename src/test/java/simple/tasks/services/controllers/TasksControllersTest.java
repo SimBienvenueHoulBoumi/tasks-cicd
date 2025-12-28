@@ -1,4 +1,4 @@
-package simple.tasks.controllers;
+package simple.tasks.services.controllers;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -9,14 +9,19 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.restdocs.RestDocumentationContextProvider;
+import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import simple.tasks.controllers.TasksControllers;
 import simple.tasks.dto.TasksDto;
 import simple.tasks.models.Tasks;
 import simple.tasks.services.*;
 
 import java.util.List;
 
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -25,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * Utilise MockMvc en mode standalone + Mockito pour isoler le contrôleur.
  */
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, RestDocumentationExtension.class})
 class TasksControllersTest {
 
     private MockMvc mockMvc;
@@ -49,8 +54,10 @@ class TasksControllersTest {
     private DeleteTask deleteTasksService;
 
     @BeforeEach
-    void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+    void setUp(RestDocumentationContextProvider restDocumentation) {
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+            .apply(documentationConfiguration(restDocumentation))
+            .build();
     }
 
     @Test
@@ -64,7 +71,8 @@ class TasksControllersTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].id").value(1L))
             .andExpect(jsonPath("$[0].name").value("Faire les courses"))
-            .andExpect(jsonPath("$[0]._links.self").value("/tasks/1"));
+            .andExpect(jsonPath("$[0]._links.self").value("/tasks/1"))
+            .andDo(document("tasks-get-all"));
     }
 
     @Test
@@ -78,7 +86,8 @@ class TasksControllersTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(2L))
             .andExpect(jsonPath("$.name").value("Lire un livre"))
-            .andExpect(jsonPath("$._links.self").value("/tasks/2"));
+            .andExpect(jsonPath("$._links.self").value("/tasks/2"))
+            .andDo(document("tasks-get-by-id"));
     }
 
     @Test
@@ -100,7 +109,8 @@ class TasksControllersTest {
                 .content(json))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(3L))
-            .andExpect(jsonPath("$.name").value("Nouvelle tâche"));
+            .andExpect(jsonPath("$.name").value("Nouvelle tâche"))
+            .andDo(document("tasks-create"));
     }
 
     @Test
@@ -122,14 +132,16 @@ class TasksControllersTest {
                 .content(json))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(4L))
-            .andExpect(jsonPath("$.name").value("Tâche mise à jour"));
+            .andExpect(jsonPath("$.name").value("Tâche mise à jour"))
+            .andDo(document("tasks-update"));
     }
 
     @Test
     @DisplayName("DELETE /tasks/{id} doit supprimer une tâche et retourner 204")
     void deleteTask_deletesTask() throws Exception {
         mockMvc.perform(delete("/tasks/{id}", 5L))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andDo(document("tasks-delete"));
 
         Mockito.verify(deleteTasksService).deleteTask(5L);
     }

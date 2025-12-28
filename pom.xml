@@ -22,6 +22,15 @@
         <sonar.sources>src/main/java</sonar.sources>
         <sonar.tests>src/test/java</sonar.tests>
         <sonar.exclusions>**/src/test/java/**/*</sonar.exclusions>
+
+        <!-- Flags de contrôle des tests -->
+        <!-- true  = on saute les tests unitaires (utilisé pour ne lancer que les IT) -->
+        <!-- false = on exécute les tests unitaires (cas normal) -->
+        <skipUnitTests>false</skipUnitTests>
+
+        <!-- true  = on saute les tests d'intégration (cas normal sur mvn verify) -->
+        <!-- false = on exécute les tests d'intégration (IT) -->
+        <skipITs>true</skipITs>
     </properties>
 
     <dependencies>
@@ -55,6 +64,14 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Spring REST Docs (MockMvc) pour générer la documentation API à partir des tests -->
+        <dependency>
+            <groupId>org.springframework.restdocs</groupId>
+            <artifactId>spring-restdocs-mockmvc</artifactId>
+            <version>3.0.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -176,7 +193,37 @@
                 <version>3.2.5</version>
                 <configuration>
                     <useModulePath>false</useModulePath>
+                    <!-- Contrôle des tests unitaires via la propriété skipUnitTests -->
+                    <skipTests>${skipUnitTests}</skipTests>
+                    <!-- On laisse les IT au plugin Failsafe -->
+                    <excludes>
+                        <exclude>**/services/integration/**</exclude>
+                    </excludes>
                 </configuration>
+            </plugin>
+
+            <!-- Tests d'intégration (IT) via Failsafe -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <!-- Inclure uniquement nos tests d'intégration -->
+                    <includes>
+                        <include>**/services/integration/**</include>
+                    </includes>
+                    <!-- Contrôle via la propriété skipITs (true par défaut) -->
+                    <skipITs>${skipITs}</skipITs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>integration-tests</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Compilation Java 17 -->
@@ -193,18 +240,12 @@
             <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
-                <version>9.0.9</version>
+                <!-- Upgrade obligatoire 12.1.x pour compatibilité NVD API -->
+                <version>12.1.9</version>
                 <configuration>
                     <!-- Ne fait pas échouer le build si la NVD est inaccessible (403/404, throttling, etc.) -->
                     <failOnError>false</failOnError>
                 </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
 
         </plugins>

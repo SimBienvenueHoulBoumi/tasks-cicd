@@ -94,9 +94,10 @@ pipeline {
             }
         }
 
-        stage('🧪 Tests & Build') {
+        stage('🧪 Unit Tests & Build') {
             steps {
-                sh './mvnw clean verify -DskipITs'
+                // Tests unitaires + build + Jacoco, en sautant les tests d'intégration
+                sh './mvnw clean verify -DskipITs=true -DskipUnitTests=false'
             }
             post {
                 always {
@@ -105,6 +106,13 @@ pipeline {
                 success {
                     archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
                 }
+            }
+        }
+
+        stage('🔗 Integration Tests (IT)') {
+            steps {
+                // Tests d'intégration uniquement (Failsafe), on saute les tests unitaires
+                sh './mvnw verify -DskipITs=false -DskipUnitTests=true'
             }
         }
 
