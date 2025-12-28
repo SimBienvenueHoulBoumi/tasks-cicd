@@ -16,8 +16,10 @@ spec:
     spec:
       containers:
         - name: tasks-api
-          # Image poussée par le pipeline Jenkins "tasks" vers Nexus
-          image: localhost:8083/simdev/task-rest-api:latest
+          # Image poussée par le pipeline Jenkins "tasks" dans Nexus accessible depuis le cluster
+          # IMPORTANT : depuis un Pod Kubernetes, "localhost" ne pointe PAS vers ta machine hôte.
+          # On passe donc par host.docker.internal:8083 (accessible depuis les conteneurs Docker Desktop / kind).
+          image: host.docker.internal:8083/simdev/task-rest-api:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5300
