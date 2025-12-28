@@ -237,17 +237,6 @@
                 </configuration>
             </plugin>
 
-            <plugin>
-                <groupId>org.owasp</groupId>
-                <artifactId>dependency-check-maven</artifactId>
-                <!-- Upgrade obligatoire 12.1.x pour compatibilité NVD API -->
-                <version>12.1.9</version>
-                <configuration>
-                    <!-- Ne fait pas échouer le build si la NVD est inaccessible (403/404, throttling, etc.) -->
-                    <failOnError>false</failOnError>
-                </configuration>
-            </plugin>
-
         </plugins>
     </build>
 </project>
