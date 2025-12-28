@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tasks-config
+  labels:
+    app: tasks-api
+data:
+  # Port HTTP utilisé par l'application Spring Boot "tasks"
+  SERVER_PORT: "5300"
+
+

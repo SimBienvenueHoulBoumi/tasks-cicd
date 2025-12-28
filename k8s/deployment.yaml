@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tasks-api
+  labels:
+    app: tasks-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tasks-api
+  template:
+    metadata:
+      labels:
+        app: tasks-api
+    spec:
+      containers:
+        - name: tasks-api
+          # Image poussée par le pipeline Jenkins "tasks" vers Nexus
+          image: localhost:8083/simdev/task-rest-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5300
+          envFrom:
+            - configMapRef:
+                name: tasks-config
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 5300
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 5300
+            initialDelaySeconds: 30
+            periodSeconds: 30
+
+
