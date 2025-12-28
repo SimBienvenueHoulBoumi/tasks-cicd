@@ -296,18 +296,6 @@ pipeline {
             }
         }
 
-        stage('🚀 Argo CD Apply (deploy.yaml)') {
-            when {
-                expression { env.ARGOCD_ENABLED == "true" }
-            }
-            steps {
-                sh '''
-                    echo "[ARGOCD] Application de l'Application Argo CD depuis deploy.yaml..."
-                    kubectl apply -f springboot/tasks/deploy.yaml -n ${ARGOCD_NAMESPACE}
-                '''
-            }
-        }
-
         stage('🧹 Cleanup') {
             steps {
                 sh '''
