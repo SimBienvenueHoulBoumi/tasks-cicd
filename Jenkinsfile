@@ -20,11 +20,12 @@ pipeline {
         // La version applicative est lue dynamiquement depuis le pom.xml (voir stage 📥 Checkout)
         PROJECT_VERSION = ""
 
-        // SCM
+        // SCM (BRANCH_NAME = branche courante en multibranch, sinon "main")
         GIT_REPO_URL    = "git@github.com:SimBienvenueHoulBoumi/tasks-cicd.git"
-        GIT_BRANCH      = "main"
+        GIT_BRANCH      = "${BRANCH_NAME ?: 'main'}"
         GIT_CRED_ID     = "JENKINS_AGENT"
 
+        // Registry Docker (Nexus) – même machine que Jenkins / ArgoCD
         NEXUS_REGISTRY    = "localhost:8083"
         AUTHORITY         = "simdev"
         IMAGE_REPO        = "${NEXUS_REGISTRY}/${AUTHORITY}/${PROJECT_NAME}"
@@ -238,6 +239,10 @@ pipeline {
         }
 
         stage('📦 Push to Nexus') {
+            when {
+                // On ne pousse dans le registry que pour main
+                expression { env.BRANCH_NAME == null || env.BRANCH_NAME == 'main' }
+            }
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "${NEXUS_CREDENTIALS}",
