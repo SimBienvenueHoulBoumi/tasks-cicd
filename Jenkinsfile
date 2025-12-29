@@ -156,7 +156,6 @@ pipeline {
                     env.IMAGE_NAME_SHA     = "${IMAGE_REPO}:${commit}"
                     env.IMAGE_NAME_VERSION = "${IMAGE_REPO}:${env.PROJECT_VERSION}"
 
-                    // Build sans BuildKit (buildx non installé sur l'agent)
                     sh """
                         docker build \\
                           -t ${IMAGE_NAME_BUILD} \\
