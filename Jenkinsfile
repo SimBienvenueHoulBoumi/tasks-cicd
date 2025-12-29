@@ -34,6 +34,7 @@ pipeline {
         IMAGE_TAG_BUILD   = "${APP_NAME}:${BUILD_NUMBER}"
         IMAGE_TAG_SHA     = ""                               // défini avec le SHA dans le stage Docker
         IMAGE_TAG_VERSION = "${APP_NAME}:${PROJECT_VERSION}" // tag immuable basé sur la version applicative
+        IMAGE_TAG_LATEST  = "${APP_NAME}:latest"             // tag "moving" pour le dernier build
 
         // Nexus
         NEXUS_CREDENTIALS = "NEXUS_CREDENTIALS"
@@ -151,16 +152,19 @@ pipeline {
                     env.IMAGE_TAG_BUILD   = "${APP_NAME}:${BUILD_NUMBER}"
                     env.IMAGE_TAG_SHA     = "${APP_NAME}:${commit}"
                     env.IMAGE_TAG_VERSION = "${APP_NAME}:${env.PROJECT_VERSION}"
+                    env.IMAGE_TAG_LATEST  = "${APP_NAME}:latest"
 
                     env.IMAGE_NAME_BUILD   = "${IMAGE_REPO}:${BUILD_NUMBER}"
                     env.IMAGE_NAME_SHA     = "${IMAGE_REPO}:${commit}"
                     env.IMAGE_NAME_VERSION = "${IMAGE_REPO}:${env.PROJECT_VERSION}"
+                    env.IMAGE_NAME_LATEST  = "${IMAGE_REPO}:latest"
 
                     sh """
                         docker build \\
                           -t ${IMAGE_NAME_BUILD} \\
                           -t ${IMAGE_NAME_SHA} \\
                           -t ${IMAGE_NAME_VERSION} \\
+                          -t ${IMAGE_NAME_LATEST} \\
                           .
                     """
                 }
@@ -254,6 +258,7 @@ pipeline {
                         docker push ${IMAGE_NAME_BUILD}
                         docker push ${IMAGE_NAME_SHA}
                         docker push ${IMAGE_NAME_VERSION}
+                        docker push ${IMAGE_NAME_LATEST}
 
                         docker logout ${NEXUS_REGISTRY}
                     '''
